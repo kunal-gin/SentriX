@@ -12,6 +12,7 @@ import { IncidentDetailPage } from './features/incidents/IncidentDetailPage';
 import { ChecksPage } from './features/checks/ChecksPage';
 import { UsersPage } from './features/users/UsersPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
+import { AuditLogsPage } from './features/audit/AuditLogsPage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -122,6 +123,17 @@ function App() {
                 <Protected>
                   <Layout>
                     <UsersPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/audit"
+              element={
+                <Protected>
+                  <Layout>
+                    <AuditLogsPage />
                   </Layout>
                 </Protected>
               }

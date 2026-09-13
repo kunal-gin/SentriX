@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -92,6 +93,47 @@ type DemoChannel struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type DemoSilence struct {
+	ID         string    `json:"id"`
+	ServerID   *string   `json:"server_id,omitempty"`
+	ServerName *string   `json:"server_name,omitempty"`
+	RuleID     *string   `json:"rule_id,omitempty"`
+	RuleName   *string   `json:"rule_name,omitempty"`
+	Reason     string    `json:"reason"`
+	StartsAt   time.Time `json:"starts_at"`
+	EndsAt     time.Time `json:"ends_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	Active     bool      `json:"active"`
+}
+
+type DemoAuditLog struct {
+	ID           string         `json:"id"`
+	ActorID      *string        `json:"actor_id,omitempty"`
+	ActorEmail   *string        `json:"actor_email,omitempty"`
+	Action       string         `json:"action"`
+	ResourceType *string        `json:"resource_type,omitempty"`
+	ResourceID   *string        `json:"resource_id,omitempty"`
+	IPAddress    *string        `json:"ip_address,omitempty"`
+	Details      map[string]any `json:"details"`
+	CreatedAt    time.Time      `json:"created_at"`
+}
+
+type DemoProcess struct {
+	PID       int     `json:"pid"`
+	Name      string  `json:"name"`
+	User      string  `json:"user"`
+	CPU       float64 `json:"cpu"`
+	MemoryRSS string  `json:"memory_rss"`
+	State     string  `json:"state"`
+}
+
+type DemoLogEntry struct {
+	Timestamp time.Time `json:"timestamp"`
+	Level     string    `json:"level"`
+	Unit      string    `json:"unit"`
+	Message   string    `json:"message"`
+}
+
 type DemoStore struct {
 	mu         sync.RWMutex
 	servers    map[string]*DemoServer
@@ -100,6 +142,8 @@ type DemoStore struct {
 	checks     map[string]*DemoCheck
 	users      map[string]*DemoUser
 	channels   map[string]*DemoChannel
+	silences   map[string]*DemoSilence
+	auditLogs  []*DemoAuditLog
 }
 
 var store *DemoStore
@@ -289,6 +333,66 @@ func initStore() {
 				Config:    map[string]any{"url": "https://hooks.slack.com/services/demo/sentrix"},
 				Enabled:   true,
 				CreatedAt: now.Add(-120 * time.Hour),
+			},
+		},
+		silences: map[string]*DemoSilence{
+			"sil-demo-001": {
+				ID:         "sil-demo-001",
+				ServerID:   &s2.ID,
+				ServerName: &s2.Name,
+				Reason:     "Postgres WAL compaction and database index vacuum",
+				StartsAt:   now.Add(-30 * time.Minute),
+				EndsAt:     now.Add(90 * time.Minute),
+				CreatedAt:  now.Add(-30 * time.Minute),
+				Active:     true,
+			},
+		},
+		auditLogs: []*DemoAuditLog{
+			{
+				ID:         "aud-001",
+				ActorEmail: func() *string { s := "admin@sentrix.local"; return &s }(),
+				Action:     "USER_LOGIN",
+				IPAddress:  func() *string { s := "192.168.1.105"; return &s }(),
+				Details:    map[string]any{"method": "password", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+				CreatedAt:  now.Add(-15 * time.Minute),
+			},
+			{
+				ID:           "aud-002",
+				ActorEmail:   func() *string { s := "admin@sentrix.local"; return &s }(),
+				Action:       "SILENCE_CREATED",
+				ResourceType: func() *string { s := "SERVER"; return &s }(),
+				ResourceID:   &s2.ID,
+				IPAddress:    func() *string { s := "192.168.1.105"; return &s }(),
+				Details:      map[string]any{"duration": "120m", "reason": "Postgres WAL compaction"},
+				CreatedAt:    now.Add(-30 * time.Minute),
+			},
+			{
+				ID:           "aud-003",
+				ActorEmail:   func() *string { s := "admin@sentrix.local"; return &s }(),
+				Action:       "RULE_CREATED",
+				ResourceType: func() *string { s := "ALERT_RULE"; return &s }(),
+				IPAddress:    func() *string { s := "192.168.1.105"; return &s }(),
+				Details:      map[string]any{"name": "High CPU Threshold", "metric": "system.cpu.utilization", "threshold": 85},
+				CreatedAt:    now.Add(-2 * time.Hour),
+			},
+			{
+				ID:           "aud-004",
+				ActorEmail:   func() *string { s := "system"; return &s }(),
+				Action:       "AGENT_ENROLLED",
+				ResourceType: func() *string { s := "AGENT"; return &s }(),
+				ResourceID:   &s3.ID,
+				IPAddress:    func() *string { s := "10.0.4.12"; return &s }(),
+				Details:      map[string]any{"hostname": "worker-01.internal", "platform": "linux (Alpine 3.20)"},
+				CreatedAt:    now.Add(-5 * time.Hour),
+			},
+			{
+				ID:           "aud-005",
+				ActorEmail:   func() *string { s := "admin@sentrix.local"; return &s }(),
+				Action:       "CHANNEL_TEST_DISPATCHED",
+				ResourceType: func() *string { s := "NOTIFICATION_CHANNEL"; return &s }(),
+				IPAddress:    func() *string { s := "192.168.1.105"; return &s }(),
+				Details:      map[string]any{"channel": "DevOps Incident Webhook", "status_code": 200},
+				CreatedAt:    now.Add(-24 * time.Hour),
 			},
 		},
 	}
@@ -860,6 +964,177 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 				"ticket":     ticket,
 				"expires_in": 30,
 			})
+		})
+
+		// Top host processes
+		r.Get("/servers/{serverID}/processes", func(w http.ResponseWriter, r *http.Request) {
+			serverID := chi.URLParam(r, "serverID")
+			store.mu.RLock()
+			srv, exists := store.servers[serverID]
+			store.mu.RUnlock()
+
+			if !exists {
+				http.Error(w, "server not found", http.StatusNotFound)
+				return
+			}
+
+			isDB := strings.Contains(srv.Name, "db") || strings.Contains(srv.Hostname, "db")
+			isWorker := strings.Contains(srv.Name, "worker")
+			now := time.Now()
+
+			var procs []DemoProcess
+			if isDB {
+				procs = []DemoProcess{
+					{PID: 1042, Name: "postgres: writer process", User: "postgres", CPU: math.Max(2.0, srv.CPU*0.35), MemoryRSS: "1.8 GB", State: "RUNNING"},
+					{PID: 1045, Name: "postgres: walwriter", User: "postgres", CPU: math.Max(1.0, srv.CPU*0.18), MemoryRSS: "850 MB", State: "RUNNING"},
+					{PID: 1048, Name: "postgres: autovacuum worker", User: "postgres", CPU: math.Max(0.5, srv.CPU*0.22), MemoryRSS: "640 MB", State: "SLEEPING"},
+					{PID: 1120, Name: "sentrix-agent", User: "sentrix", CPU: 0.3, MemoryRSS: "14 MB", State: "RUNNING"},
+					{PID: 512, Name: "systemd-journald", User: "root", CPU: 0.2, MemoryRSS: "32 MB", State: "SLEEPING"},
+					{PID: 889, Name: "sshd: root@pts/0", User: "root", CPU: 0.1, MemoryRSS: "8 MB", State: "SLEEPING"},
+					{PID: 1, Name: "systemd", User: "root", CPU: 0.0, MemoryRSS: "12 MB", State: "SLEEPING"},
+				}
+			} else if isWorker {
+				procs = []DemoProcess{
+					{PID: 2011, Name: "sentrix-worker: pool-runner", User: "app", CPU: math.Max(3.0, srv.CPU*0.55), MemoryRSS: "480 MB", State: "RUNNING"},
+					{PID: 2015, Name: "redis-server 0.0.0.0:6379", User: "redis", CPU: math.Max(1.0, srv.CPU*0.25), MemoryRSS: "320 MB", State: "RUNNING"},
+					{PID: 1120, Name: "sentrix-agent", User: "sentrix", CPU: 0.3, MemoryRSS: "14 MB", State: "RUNNING"},
+					{PID: 512, Name: "systemd-journald", User: "root", CPU: 0.1, MemoryRSS: "28 MB", State: "SLEEPING"},
+					{PID: 1, Name: "systemd", User: "root", CPU: 0.0, MemoryRSS: "10 MB", State: "SLEEPING"},
+				}
+			} else {
+				procs = []DemoProcess{
+					{PID: 1804, Name: "node /app/server.js", User: "node", CPU: math.Max(2.0, srv.CPU*0.45), MemoryRSS: "620 MB", State: "RUNNING"},
+					{PID: 1805, Name: "nginx: worker process", User: "www-data", CPU: math.Max(1.0, srv.CPU*0.25), MemoryRSS: "110 MB", State: "RUNNING"},
+					{PID: 1801, Name: "nginx: master process", User: "root", CPU: 0.2, MemoryRSS: "45 MB", State: "SLEEPING"},
+					{PID: 1120, Name: "sentrix-agent", User: "sentrix", CPU: 0.3, MemoryRSS: "14 MB", State: "RUNNING"},
+					{PID: 512, Name: "systemd-journald", User: "root", CPU: 0.1, MemoryRSS: "30 MB", State: "SLEEPING"},
+					{PID: 1, Name: "systemd", User: "root", CPU: 0.0, MemoryRSS: "12 MB", State: "SLEEPING"},
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"server_id": serverID,
+				"timestamp": now.Format(time.RFC3339),
+				"count":     len(procs),
+				"processes": procs,
+			})
+		})
+
+		// Live server log streamer
+		r.Get("/servers/{serverID}/logs", func(w http.ResponseWriter, r *http.Request) {
+			serverID := chi.URLParam(r, "serverID")
+			store.mu.RLock()
+			srv, exists := store.servers[serverID]
+			store.mu.RUnlock()
+
+			if !exists {
+				http.Error(w, "server not found", http.StatusNotFound)
+				return
+			}
+
+			now := time.Now()
+			logs := []DemoLogEntry{
+				{Timestamp: now.Add(-55 * time.Second), Level: "INFO", Unit: "systemd", Message: "Starting SentriX Telemetry Collection Daemon..."},
+				{Timestamp: now.Add(-54 * time.Second), Level: "INFO", Unit: "sentrix-agent", Message: "Collector initialized. Sampling Linux /proc metrics every 5000ms."},
+				{Timestamp: now.Add(-42 * time.Second), Level: "INFO", Unit: "kernel", Message: "TCP established connection from 127.0.0.1:8080. Socket buffer queue OK."},
+				{Timestamp: now.Add(-30 * time.Second), Level: "INFO", Unit: "sentrix-agent", Message: fmt.Sprintf("Reported telemetry sequence to ingest gateway. Host: %s, CPU: %.1f%%, Mem: %.1f%%", srv.Hostname, srv.CPU, srv.Memory)},
+				{Timestamp: now.Add(-18 * time.Second), Level: "WARN", Unit: "systemd-journald", Message: "Suppressed 4 messages due to rate-limiting in journal."},
+				{Timestamp: now.Add(-8 * time.Second), Level: "INFO", Unit: "sentrix-agent", Message: "Executed 4 synthetic checks: 4 passed, 0 failed. Latency: 1.8ms."},
+				{Timestamp: now.Add(-2 * time.Second), Level: "INFO", Unit: "sentrix-agent", Message: "Telemetry payload acknowledged by SentriX server (HTTP 200 OK)."},
+			}
+
+			if srv.Status == "SUSPECT" {
+				logs = append(logs, DemoLogEntry{
+					Timestamp: now.Add(-1 * time.Second),
+					Level:     "ERROR",
+					Unit:      "kernel",
+					Message:   "Out of memory risk: system memory utilization threshold exceeded 85% for > 5m!",
+				})
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(logs)
+		})
+
+		// Silences / Maintenance Windows
+		r.Get("/silences", func(w http.ResponseWriter, r *http.Request) {
+			store.mu.RLock()
+			defer store.mu.RUnlock()
+
+			now := time.Now()
+			list := make([]*DemoSilence, 0, len(store.silences))
+			for _, s := range store.silences {
+				s.Active = s.StartsAt.Before(now) && s.EndsAt.After(now)
+				list = append(list, s)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(list)
+		})
+
+		r.Post("/silences", func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				ServerID        *string `json:"server_id"`
+				RuleID          *string `json:"rule_id"`
+				Reason          string  `json:"reason"`
+				DurationMinutes int     `json:"duration_minutes"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+
+			now := time.Now()
+			duration := time.Duration(body.DurationMinutes) * time.Minute
+			if duration <= 0 {
+				duration = 60 * time.Minute
+			}
+
+			var srvName *string
+			if body.ServerID != nil {
+				store.mu.RLock()
+				if srv, ok := store.servers[*body.ServerID]; ok {
+					srvName = &srv.Name
+				}
+				store.mu.RUnlock()
+			}
+
+			silence := &DemoSilence{
+				ID:         "sil-" + uuid.New().String()[:8],
+				ServerID:   body.ServerID,
+				ServerName: srvName,
+				RuleID:     body.RuleID,
+				Reason:     body.Reason,
+				StartsAt:   now,
+				EndsAt:     now.Add(duration),
+				CreatedAt:  now,
+				Active:     true,
+			}
+			if silence.Reason == "" {
+				silence.Reason = "Scheduled maintenance window"
+			}
+
+			store.mu.Lock()
+			store.silences[silence.ID] = silence
+			store.mu.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(silence)
+		})
+
+		r.Delete("/silences/{silenceID}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "silenceID")
+			store.mu.Lock()
+			delete(store.silences, id)
+			store.mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
+		})
+
+		// Audit Logs
+		r.Get("/audit-logs", func(w http.ResponseWriter, r *http.Request) {
+			store.mu.RLock()
+			defer store.mu.RUnlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(store.auditLogs)
 		})
 	})
 

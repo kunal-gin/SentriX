@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Users,
   Bell,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtime } from '../hooks/useRealtime';
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/checks', label: 'Health Checks', icon: Activity, badge: null },
   { path: '/notifications', label: 'Notifications', icon: Bell, badge: null },
   { path: '/users', label: 'Team & Access', icon: Users, badge: null },
+  { path: '/audit', label: 'Audit Logs', icon: ShieldCheck, badge: null },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

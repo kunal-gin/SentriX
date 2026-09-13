@@ -24,6 +24,7 @@ import (
 	"github.com/sentrix/server/internal/metrics"
 	"github.com/sentrix/server/internal/notifications"
 	"github.com/sentrix/server/internal/realtime"
+	"github.com/sentrix/server/internal/selfmetrics"
 	"github.com/sentrix/server/internal/servers"
 	"github.com/sentrix/server/internal/storage"
 )
@@ -113,6 +114,10 @@ func main() {
 		w.Write([]byte(`{"status":"ready"}`))
 	})
 
+	// Prometheus & OpenMetrics self-monitoring exposition
+	r.Get("/metrics", selfmetrics.HandlePrometheusMetrics())
+	r.Get("/self-metrics", selfmetrics.HandleMetrics())
+
 	if isDBLive {
 		slog.Info("Mounting persistent database endpoints")
 
@@ -149,6 +154,7 @@ func main() {
 				r.Get("/alerts/rules", alerts.HandleListRules(pool))
 				r.Get("/checks", checks.HandleListChecks(pool))
 				r.Get("/notifications/channels", notifications.HandleListChannels(pool))
+				r.Get("/silences", alerts.HandleListSilences(pool))
 
 				// Incident lifecycle actions
 				r.Get("/incidents/{incidentID}", incidents.HandleGetIncident(pool))
@@ -173,6 +179,10 @@ func main() {
 					r.Post("/alerts/rules", alerts.HandleCreateRule(pool))
 					r.Patch("/alerts/rules/{ruleID}", alerts.HandleUpdateRule(pool))
 					r.Delete("/alerts/rules/{ruleID}", alerts.HandleDeleteRule(pool))
+
+					r.Post("/silences", alerts.HandleCreateSilence(pool))
+					r.Delete("/silences/{silenceID}", alerts.HandleDeleteSilence(pool))
+					r.Get("/audit-logs", auth.HandleGetAuditLogs(pool))
 				})
 
 				// Admin only
