@@ -1,0 +1,11 @@
+monitor.example.com {
+    reverse_proxy server:8080
+
+    encode gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}

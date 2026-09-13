@@ -1,0 +1,26 @@
+#ifndef COLLECTOR_H
+#define COLLECTOR_H
+
+#include <stdint.h>
+
+typedef struct {
+    double cpu_utilization;
+    uint64_t mem_total_bytes;
+    uint64_t mem_used_bytes;
+    uint64_t disk_total_bytes;
+    uint64_t disk_used_bytes;
+    uint64_t net_rx_bytes;
+    uint64_t net_tx_bytes;
+    double load_avg_1m;
+    uint64_t uptime_seconds;
+} SystemMetrics;
+
+// Collectors return 0 on success, -1 on error
+int collect_cpu(double *utilization);
+int collect_memory(uint64_t *total, uint64_t *used);
+int collect_disk(uint64_t *total, uint64_t *used);
+int collect_network(uint64_t *rx, uint64_t *tx);
+int collect_system_load(double *load_1m);
+int collect_uptime(uint64_t *seconds);
+
+#endif

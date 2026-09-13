@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+
+      - name: Format check
+        run: cd server && go fmt ./...
+
+      - name: Vet
+        run: cd server && go vet ./...
+
+      - name: Test
+        run: cd server && go test ./...
+
+  web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: Build
+        run: cd web && npm run build
+
+  agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+      - name: Ensure cJSON exists
+        run: |
+          if [ ! -f agent/src/core/cJSON.c ]; then
+            curl -o agent/src/core/cJSON.c \
+              https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.c
+          fi
+
+          if [ ! -f agent/src/core/cJSON.h ]; then
+            curl -o agent/src/core/cJSON.h \
+              https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.h
+          fi
+
+      - name: Configure agent
+        run: cmake -S agent -B agent/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build agent
+        run: cmake --build agent/build --config Release

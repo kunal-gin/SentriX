@@ -1,0 +1,21 @@
+[Unit]
+Description=SentriX Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sentrix
+Group=sentrix
+EnvironmentFile=/etc/sentrix/agent.env
+ExecStart=/opt/sentrix/bin/sentrix-agent
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

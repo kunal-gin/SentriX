@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SentriX Agent Enrollment",
+  "type": "object",
+  "required": ["token", "hostname", "platform", "architecture", "agent_version"],
+  "properties": {
+    "token": { "type": "string" },
+    "hostname": { "type": "string" },
+    "platform": { "type": "string", "enum": ["linux", "windows"] },
+    "architecture": { "type": "string", "enum": ["x86_64", "arm64"] },
+    "agent_version": { "type": "string" }
+  }
+}

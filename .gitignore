@@ -1,0 +1,27 @@
+# Binaries and build artifacts
+dist/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+server/sentrix-server
+server/sentrix-server.exe
+*.test
+
+# Node / Web
+web/node_modules/
+web/dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Agent CMake
+agent/build/
+
+# OS
+.DS_Store
+Thumbs.db

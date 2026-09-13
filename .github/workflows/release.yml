@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  server-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare image name
+        id: prep
+        run: |
+          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          TAG="${{ github.ref_name }}"
+          echo "owner=$OWNER" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ github.event.head_commit.timestamp }}
+          tags: |
+            ghcr.io/${{ steps.prep.outputs.owner }}/sentrix-server:${{ steps.prep.outputs.tag }}
+            ghcr.io/${{ steps.prep.outputs.owner }}/sentrix-server:latest
+
+  agent-artifacts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+      - name: Ensure cJSON exists
+        run: |
+          if [ ! -f agent/src/core/cJSON.c ]; then
+            curl -o agent/src/core/cJSON.c \
+              https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.c
+          fi
+
+          if [ ! -f agent/src/core/cJSON.h ]; then
+            curl -o agent/src/core/cJSON.h \
+              https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.h
+          fi
+
+      - name: Configure agent
+        run: cmake -S agent -B agent/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build agent
+        run: cmake --build agent/build --config Release
+
+      - name: Package agent
+        run: cd agent/build && cpack
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: agent/build/sentrix-agent-*.tar.gz
