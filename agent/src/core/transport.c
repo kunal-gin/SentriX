@@ -1,3 +1,57 @@
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <time.h>
+#include "collector.h"
+
+void build_telemetry_json(char *buffer, size_t size, const char *agent_id, uint64_t seq, const SystemMetrics *m) {
+    time_t now = time(NULL);
+    struct tm *tm_info = gmtime(&now);
+    char timestamp[32];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+
+    snprintf(buffer, size,
+        "{"
+        "\"agent_id\":\"%s\","
+        "\"timestamp\":\"%s\","
+        "\"sequence\":%lu,"
+        "\"metrics\":["
+            "{\"name\":\"system.cpu.utilization\",\"value\":%.2f,\"unit\":\"percent\"},"
+            "{\"name\":\"system.memory.utilization\",\"value\":%.2f,\"unit\":\"percent\"},"
+            "{\"name\":\"system.disk.utilization\",\"value\":%.2f,\"unit\":\"percent\"},"
+            "{\"name\":\"system.load.1m\",\"value\":%.2f,\"unit\":\"count\"}"
+        "]"
+        "}",
+        agent_id, timestamp, (unsigned long)seq,
+        m->cpu_utilization,
+        (m->mem_total_bytes > 0) ? (100.0 * (double)m->mem_used_bytes / (double)m->mem_total_bytes) : 0.0,
+        (m->disk_total_bytes > 0) ? (100.0 * (double)m->disk_used_bytes / (double)m->disk_total_bytes) : 0.0,
+        m->load_avg_1m
+    );
+}
+
+int http_request(
+    const char *method,
+    const char *host,
+    int port,
+    const char *path,
+    const char *auth_token,
+    const char *body,
+    char *response_body,
+    size_t response_size
+);
+
+int send_telemetry(const char *host, int port, const char *path, const char *json_payload, const char *auth_token) {
+    char response[1024];
+    int status = http_request("POST", host, port, path, auth_token, json_payload, response, sizeof(response));
+    return (status >= 200 && status < 300) ? 0 : -1;
+}
+
 int http_request(
     const char *method,
     const char *host,

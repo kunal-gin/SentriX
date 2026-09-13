@@ -12,17 +12,11 @@ endif()
 
 set(SOURCES
     src/main.c
-    src/core/collector.c
-    src/core/scheduler.c
     src/core/transport.c
-    src/core/config.c
-    src/core/buffer.c
     src/core/checks.c
     src/core/cJSON.c
     src/platform/linux/cpu.c
     src/platform/linux/memory.c
-    src/platform/linux/disk.c
-    src/platform/linux/network.c
     src/platform/linux/system.c
 )
 
