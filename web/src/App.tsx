@@ -10,6 +10,8 @@ import { AlertRulesPage } from './features/alerts/AlertRulesPage';
 import { IncidentsPage } from './features/incidents/IncidentsPage';
 import { IncidentDetailPage } from './features/incidents/IncidentDetailPage';
 import { ChecksPage } from './features/checks/ChecksPage';
+import { UsersPage } from './features/users/UsersPage';
+import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -98,6 +100,28 @@ function App() {
                 <Protected>
                   <Layout>
                     <ChecksPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/notifications"
+              element={
+                <Protected>
+                  <Layout>
+                    <NotificationsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/users"
+              element={
+                <Protected>
+                  <Layout>
+                    <UsersPage />
                   </Layout>
                 </Protected>
               }

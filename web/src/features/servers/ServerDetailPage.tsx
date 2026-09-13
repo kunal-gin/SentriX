@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Area,
   AreaChart,
@@ -11,6 +12,7 @@ import {
 } from 'recharts';
 import { useServers } from '../../hooks/useDashboard';
 import { useServerMetrics } from '../../hooks/useMetrics';
+import { mutateJSON } from '../../lib/api';
 import {
   ArrowLeft,
   Server as ServerIcon,
@@ -23,6 +25,8 @@ import {
   Activity,
   ShieldCheck,
   Terminal,
+  Trash2,
+  AlertCircle,
 } from 'lucide-react';
 
 const ranges = [
@@ -86,6 +90,26 @@ export function ServerDetailPage() {
   );
 
   const server = servers?.find((s) => s.id === serverId);
+
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteServer() {
+    if (!serverId) return;
+    setDeleting(true);
+    try {
+      await mutateJSON(`/servers/${serverId}`, 'DELETE');
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      navigate('/');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function copyServerId() {
     if (serverId) {
@@ -203,6 +227,14 @@ export function ServerDetailPage() {
                 <Clock size={11} /> 5s Live
               </span>
             </div>
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="px-3 py-2 rounded-xl bg-critical/10 border border-critical/30 hover:bg-critical/20 text-critical text-xs font-mono flex items-center gap-1.5 transition-colors"
+              title="Decommission this server node"
+            >
+              <Trash2 size={13} />
+              <span>Decommission</span>
+            </button>
           </div>
         </div>
       </div>
@@ -389,6 +421,36 @@ export function ServerDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Decommission Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-critical">
+              <AlertCircle size={24} />
+              <h3 className="font-bold text-white text-base">Decommission Node?</h3>
+            </div>
+            <p className="text-xs text-muted">
+              This will remove <strong className="text-white">{server.name}</strong> from the fleet overview and purge its active status.
+            </p>
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="px-4 py-2 rounded-xl bg-surface border border-border text-xs text-muted hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteServer}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl bg-critical hover:bg-critical/80 text-xs font-semibold text-white transition-colors"
+              >
+                {deleting ? 'Removing...' : 'Confirm Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

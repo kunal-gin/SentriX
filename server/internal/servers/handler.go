@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -65,5 +66,50 @@ func HandleListServers(pool *pgxpool.Pool) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(servers)
+	}
+}
+
+// DELETE /api/v1/servers/{serverID}
+func HandleDeleteServer(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		serverID := chi.URLParam(r, "serverID")
+		if serverID == "" {
+			http.Error(w, "server ID required", http.StatusBadRequest)
+			return
+		}
+
+		ctx := r.Context()
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			http.Error(w, "database transaction failed", http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback(ctx)
+
+		// Clean up dependent records
+		_, _ = tx.Exec(ctx, "DELETE FROM checks WHERE server_id = $1", serverID)
+		_, _ = tx.Exec(ctx, "DELETE FROM incidents WHERE server_id = $1", serverID)
+		_, _ = tx.Exec(ctx, "DELETE FROM metric_cpu WHERE server_id = $1", serverID)
+		_, _ = tx.Exec(ctx, "DELETE FROM metric_memory WHERE server_id = $1", serverID)
+		_, _ = tx.Exec(ctx, "DELETE FROM metric_disk WHERE server_id = $1", serverID)
+		_, _ = tx.Exec(ctx, "DELETE FROM metric_network WHERE server_id = $1", serverID)
+
+		result, err := tx.Exec(ctx, "DELETE FROM servers WHERE id = $1", serverID)
+		if err != nil {
+			http.Error(w, "failed to delete server", http.StatusInternalServerError)
+			return
+		}
+
+		if result.RowsAffected() == 0 {
+			http.Error(w, "server not found", http.StatusNotFound)
+			return
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			http.Error(w, "transaction commit failed", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

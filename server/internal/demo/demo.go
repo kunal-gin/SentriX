@@ -75,12 +75,31 @@ type DemoCheck struct {
 	CreatedAt           time.Time  `json:"created_at"`
 }
 
+type DemoUser struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type DemoChannel struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Config    any       `json:"config"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type DemoStore struct {
 	mu         sync.RWMutex
 	servers    map[string]*DemoServer
 	incidents  map[string]*DemoIncident
 	alertRules map[string]*DemoAlertRule
 	checks     map[string]*DemoCheck
+	users      map[string]*DemoUser
+	channels   map[string]*DemoChannel
 }
 
 var store *DemoStore
@@ -252,6 +271,25 @@ func initStore() {
 		checks: map[string]*DemoCheck{
 			chk1.ID: chk1,
 			chk2.ID: chk2,
+		},
+		users: map[string]*DemoUser{
+			"usr-admin-demo": {
+				ID:        "usr-admin-demo",
+				Email:     "admin@sentrix.local",
+				Role:      "ADMIN",
+				Status:    "ACTIVE",
+				CreatedAt: now.Add(-720 * time.Hour),
+			},
+		},
+		channels: map[string]*DemoChannel{
+			"chan-webhook-demo": {
+				ID:        "chan-webhook-demo",
+				Name:      "DevOps Incident Webhook",
+				Type:      "WEBHOOK",
+				Config:    map[string]any{"url": "https://hooks.slack.com/services/demo/sentrix"},
+				Enabled:   true,
+				CreatedAt: now.Add(-120 * time.Hour),
+			},
 		},
 	}
 }
@@ -663,27 +701,165 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 			})
 		})
 
-		r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode([]map[string]any{
-				{
-					"id":         "usr-admin-demo",
-					"email":      "admin@sentrix.local",
-					"role":       "ADMIN",
-					"status":     "ACTIVE",
-					"created_at": time.Now().Add(-720 * time.Hour).Format(time.RFC3339),
-				},
-			})
+		// Server management
+		r.Delete("/servers/{serverID}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "serverID")
+			store.mu.Lock()
+			delete(store.servers, id)
+			store.mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
 		})
 
-		r.Get("/notifications/channels", func(w http.ResponseWriter, r *http.Request) {
+		// Users management
+		r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
+			store.mu.RLock()
+			defer store.mu.RUnlock()
+
+			list := make([]*DemoUser, 0, len(store.users))
+			for _, u := range store.users {
+				list = append(list, u)
+			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode([]map[string]any{})
+			json.NewEncoder(w).Encode(list)
+		})
+
+		r.Post("/users", func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Email    string `json:"email"`
+				Password string `json:"password"`
+				Role     string `json:"role"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+			if body.Role == "" {
+				body.Role = "VIEWER"
+			}
+
+			user := &DemoUser{
+				ID:        uuid.New().String(),
+				Email:     body.Email,
+				Role:      body.Role,
+				Status:    "ACTIVE",
+				CreatedAt: time.Now().UTC(),
+			}
+
+			store.mu.Lock()
+			store.users[user.ID] = user
+			store.mu.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(user)
+		})
+
+		r.Delete("/users/{userID}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "userID")
+			store.mu.Lock()
+			delete(store.users, id)
+			store.mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
+		})
+
+		// Notifications channels management
+		r.Get("/notifications/channels", func(w http.ResponseWriter, r *http.Request) {
+			store.mu.RLock()
+			defer store.mu.RUnlock()
+
+			list := make([]*DemoChannel, 0, len(store.channels))
+			for _, c := range store.channels {
+				list = append(list, c)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(list)
+		})
+
+		r.Post("/notifications/channels", func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Name   string         `json:"name"`
+				Type   string         `json:"type"`
+				Config map[string]any `json:"config"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+
+			channel := &DemoChannel{
+				ID:        uuid.New().String(),
+				Name:      body.Name,
+				Type:      body.Type,
+				Config:    body.Config,
+				Enabled:   true,
+				CreatedAt: time.Now().UTC(),
+			}
+
+			store.mu.Lock()
+			store.channels[channel.ID] = channel
+			store.mu.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(channel)
+		})
+
+		r.Delete("/notifications/channels/{channelID}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "channelID")
+			store.mu.Lock()
+			delete(store.channels, id)
+			store.mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
 		})
 
 		r.Get("/notifications/jobs", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode([]map[string]any{})
+		})
+
+		// Agent enrollment token management
+		r.Post("/agents/enrollment-tokens", func(w http.ResponseWriter, r *http.Request) {
+			id := uuid.New().String()
+			token := "enr_" + uuid.New().String()
+			expiresAt := time.Now().UTC().Add(24 * time.Hour)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]any{
+				"id":         id,
+				"token":      token,
+				"expires_at": expiresAt,
+			})
+		})
+
+		r.Get("/agents/enrollment-tokens", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]map[string]any{
+				{
+					"id":          "enr-demo-sample",
+					"description": "Default Agent Token",
+					"expires_at":  time.Now().Add(24 * time.Hour),
+					"created_at":  time.Now(),
+				},
+			})
+		})
+
+		r.Post("/realtime/ticket", func(w http.ResponseWriter, r *http.Request) {
+			ticket := ticketStore.Issue("demo-admin-id")
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"ticket":     ticket,
+				"expires_in": 30,
+			})
+		})
+
+		r.Post("/auth/ws-ticket", func(w http.ResponseWriter, r *http.Request) {
+			ticket := ticketStore.Issue("demo-admin-id")
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"ticket":     ticket,
+				"expires_in": 30,
+			})
 		})
 	})
 

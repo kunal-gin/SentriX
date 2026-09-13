@@ -163,11 +163,13 @@ func main() {
 
 				// Realtime ticket
 				r.Post("/realtime/ticket", realtime.HandleIssueTicket(ticketStore))
+				r.Post("/auth/ws-ticket", realtime.HandleIssueTicket(ticketStore))
 
-				// Operator + Admin: alert management
+				// Operator + Admin: alert & node management
 				r.Group(func(r chi.Router) {
 					r.Use(auth.RequireRole("ADMIN", "OPERATOR"))
 
+					r.Delete("/servers/{serverID}", servers.HandleDeleteServer(pool))
 					r.Post("/alerts/rules", alerts.HandleCreateRule(pool))
 					r.Patch("/alerts/rules/{ruleID}", alerts.HandleUpdateRule(pool))
 					r.Delete("/alerts/rules/{ruleID}", alerts.HandleDeleteRule(pool))
@@ -179,6 +181,9 @@ func main() {
 
 					r.Get("/users", auth.HandleListUsers(pool))
 					r.Post("/users", auth.HandleCreateUser(pool))
+
+					r.Post("/agents/enrollment-tokens", agents.HandleCreateEnrollmentToken(pool))
+					r.Get("/agents/enrollment-tokens", agents.HandleListEnrollmentTokens(pool))
 
 					r.Post("/notifications/channels", notifications.HandleCreateChannel(pool))
 					r.Delete("/notifications/channels/{channelID}", notifications.HandleDeleteChannel(pool))

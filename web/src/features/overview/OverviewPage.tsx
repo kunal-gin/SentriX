@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDashboardSummary, useServers, Server } from '../../hooks/useDashboard';
+import { EnrollServerModal } from './EnrollServerModal';
 import {
   Server as ServerIcon,
   AlertTriangle,
@@ -15,6 +16,7 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Plus,
 } from 'lucide-react';
 
 function StatusPill({ status }: { status: string }) {
@@ -97,6 +99,7 @@ export function OverviewPage() {
   const [filter, setFilter] = useState<'ALL' | 'ONLINE' | 'SUSPECT' | 'OFFLINE'>('ALL');
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [enrollOpen, setEnrollOpen] = useState(false);
 
   function copyText(text: string, id: string) {
     navigator.clipboard.writeText(text);
@@ -135,6 +138,13 @@ export function OverviewPage() {
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setEnrollOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary via-primary to-primary-hover hover:opacity-95 text-xs font-semibold text-white shadow-glow-primary transition-all duration-200 active:scale-95"
+          >
+            <Plus size={14} />
+            <span>Enroll Node</span>
+          </button>
+          <button
             onClick={() => refetch()}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface border border-border hover:border-border-strong text-xs text-muted hover:text-white transition-all shadow-sm group"
           >
@@ -147,6 +157,8 @@ export function OverviewPage() {
           </div>
         </div>
       </div>
+
+      <EnrollServerModal isOpen={enrollOpen} onClose={() => setEnrollOpen(false)} />
 
       {/* Bento Grid: 4 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

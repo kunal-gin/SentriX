@@ -13,21 +13,38 @@ int collect_disk(uint64_t *total, uint64_t *used) {
 }
 
 int collect_network(uint64_t *rx, uint64_t *tx) {
-    // Simplified: reads eth0. In production, loop through /proc/net/dev
     FILE *fp = fopen("/proc/net/dev", "r");
     if (!fp) return -1;
-    char line[256];
-    *rx = 0; *tx = 0;
+
+    char line[512];
+    uint64_t total_rx = 0;
+    uint64_t total_tx = 0;
+
+    // Skip the first two header lines
+    if (!fgets(line, sizeof(line), fp)) { fclose(fp); return -1; }
+    if (!fgets(line, sizeof(line), fp)) { fclose(fp); return -1; }
+
     while (fgets(line, sizeof(line), fp)) {
-        if (strstr(line, "eth0") || strstr(line, "ens")) {
-            char *colon = strchr(line, ':');
-            if (colon) {
-                sscanf(colon + 1, "%lu %*u %*u %*u %*u %*u %*u %*u %lu", rx, tx);
-                break;
-            }
+        char *colon = strchr(line, ':');
+        if (!colon) continue;
+
+        *colon = '\0';
+        char *iface = line;
+        while (*iface == ' ') iface++;
+
+        // Ignore loopback interface
+        if (strcmp(iface, "lo") == 0) continue;
+
+        uint64_t r_bytes = 0, t_bytes = 0;
+        if (sscanf(colon + 1, "%lu %*u %*u %*u %*u %*u %*u %*u %lu", &r_bytes, &t_bytes) >= 2) {
+            total_rx += r_bytes;
+            total_tx += t_bytes;
         }
     }
+
     fclose(fp);
+    *rx = total_rx;
+    *tx = total_tx;
     return 0;
 }
 
