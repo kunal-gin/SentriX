@@ -17,6 +17,10 @@ import { MetricsExplorerPage } from './features/metrics/MetricsExplorerPage';
 import { ServicesPage } from './features/services/ServicesPage';
 import { InfrastructurePage } from './features/infrastructure/InfrastructurePage';
 import { CentralLogsPage } from './features/logs/CentralLogsPage';
+import { TracesPage } from './features/traces/TracesPage';
+import { ServiceMapPage } from './features/servicemap/ServiceMapPage';
+import { SLOPage } from './features/slo/SLOPage';
+import { DashboardsPage } from './features/dashboards/DashboardsPage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -182,6 +186,50 @@ function App() {
                 <Protected>
                   <Layout>
                     <CentralLogsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/traces"
+              element={
+                <Protected>
+                  <Layout>
+                    <TracesPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/service-map"
+              element={
+                <Protected>
+                  <Layout>
+                    <ServiceMapPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/slos"
+              element={
+                <Protected>
+                  <Layout>
+                    <SLOPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/dashboards"
+              element={
+                <Protected>
+                  <Layout>
+                    <DashboardsPage />
                   </Layout>
                 </Protected>
               }

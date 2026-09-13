@@ -16,9 +16,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/sentrix/server/internal/alerts"
 	"github.com/sentrix/server/internal/auth"
+	"github.com/sentrix/server/internal/dashboards"
 	"github.com/sentrix/server/internal/logs"
 	"github.com/sentrix/server/internal/realtime"
+	"github.com/sentrix/server/internal/servicemap"
 	"github.com/sentrix/server/internal/services"
+	"github.com/sentrix/server/internal/slo"
+	"github.com/sentrix/server/internal/traces"
 )
 
 type DemoServer struct {
@@ -1112,6 +1116,26 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 		// Centralized Logs
 		r.Get("/logs", logs.HandleSearchLogs(nil))
 		r.Post("/logs/batch", logs.HandleBatchLogs(nil))
+
+		// Distributed Tracing & OpenTelemetry
+		r.Get("/traces", traces.HandleListTraces(nil))
+		r.Get("/traces/{traceID}", traces.HandleGetTrace(nil))
+		r.Post("/traces", traces.HandleIngestTraces(nil))
+		r.Post("/otlp/v1/traces", traces.HandleIngestTraces(nil))
+		r.Post("/v1/traces", traces.HandleIngestTraces(nil))
+
+		// Service Map & Synthetics
+		r.Get("/service-map", servicemap.HandleGetServiceMap(nil))
+		r.Get("/synthetics", servicemap.HandleGetSynthetics(nil))
+
+		// SLO & Reliability Intelligence
+		r.Get("/slos", slo.HandleListSLOs(nil))
+		r.Post("/slos", slo.HandleCreateSLO(nil))
+
+		// Custom Dashboards
+		r.Get("/dashboards", dashboards.HandleListDashboards(nil))
+		r.Get("/dashboards/{id}", dashboards.HandleGetDashboard(nil))
+		r.Post("/dashboards", dashboards.HandleCreateDashboard(nil))
 
 		r.Get("/alerts/rules", func(w http.ResponseWriter, r *http.Request) {
 			store.mu.RLock()

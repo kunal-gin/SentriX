@@ -17,6 +17,9 @@ import {
   FileCode,
   FileText,
   Layers,
+  GitCommit,
+  Globe,
+  Target,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -51,6 +54,38 @@ export function CommandPalette({
       icon: LayoutDashboard,
       action: () => navigate('/'),
       shortcut: 'G O',
+    },
+    {
+      id: 'nav-dashboards',
+      title: 'Custom Observability Workspaces & Dashboards',
+      category: 'Navigation',
+      icon: LayoutDashboard,
+      action: () => navigate('/dashboards'),
+      shortcut: 'G D',
+    },
+    {
+      id: 'nav-traces',
+      title: 'Distributed Tracing & OpenTelemetry Waterfall',
+      category: 'Navigation',
+      icon: GitCommit,
+      action: () => navigate('/traces'),
+      shortcut: 'G T',
+    },
+    {
+      id: 'nav-servicemap',
+      title: 'Service Dependency Map & Inter-Service Flow',
+      category: 'Navigation',
+      icon: Globe,
+      action: () => navigate('/service-map'),
+      shortcut: 'G P',
+    },
+    {
+      id: 'nav-slos',
+      title: 'Service Level Objectives (SLOs) & Error Budgets',
+      category: 'Navigation',
+      icon: Target,
+      action: () => navigate('/slos'),
+      shortcut: 'G B',
     },
     {
       id: 'nav-metrics',

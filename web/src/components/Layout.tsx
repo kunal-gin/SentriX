@@ -17,6 +17,9 @@ import {
   ShieldCheck,
   FileText,
   Server,
+  GitCommit,
+  Globe,
+  Target,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtime } from '../hooks/useRealtime';
@@ -25,10 +28,14 @@ import { CommandPalette } from './ui/CommandPalette';
 
 const navItems = [
   { path: '/', label: 'Fleet Overview', icon: LayoutDashboard, badge: null },
+  { path: '/dashboards', label: 'Custom Dashboards', icon: LayoutDashboard, badge: null },
   { path: '/metrics', label: 'Metrics Explorer', icon: Activity, badge: null },
   { path: '/logs', label: 'Central Logs', icon: FileText, badge: null },
+  { path: '/traces', label: 'Distributed Traces', icon: GitCommit, badge: null },
   { path: '/services', label: 'Services Catalog', icon: Layers, badge: null },
   { path: '/infrastructure', label: 'Infrastructure Fleet', icon: Server, badge: null },
+  { path: '/service-map', label: 'Service Dependency Map', icon: Globe, badge: null },
+  { path: '/slos', label: 'SLOs & Reliability', icon: Target, badge: null },
   { path: '/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
   { path: '/alerts', label: 'Alert Rules 2.0', icon: BellRing, badge: null },
   { path: '/checks', label: 'Health Checks', icon: Activity, badge: null },

@@ -19,6 +19,7 @@ import (
 	"github.com/sentrix/server/internal/api"
 	"github.com/sentrix/server/internal/auth"
 	"github.com/sentrix/server/internal/checks"
+	"github.com/sentrix/server/internal/dashboards"
 	"github.com/sentrix/server/internal/demo"
 	"github.com/sentrix/server/internal/health"
 	"github.com/sentrix/server/internal/incidents"
@@ -28,8 +29,11 @@ import (
 	"github.com/sentrix/server/internal/realtime"
 	"github.com/sentrix/server/internal/selfmetrics"
 	"github.com/sentrix/server/internal/servers"
+	"github.com/sentrix/server/internal/servicemap"
 	"github.com/sentrix/server/internal/services"
+	"github.com/sentrix/server/internal/slo"
 	"github.com/sentrix/server/internal/storage"
+	"github.com/sentrix/server/internal/traces"
 )
 
 func main() {
@@ -175,6 +179,26 @@ func main() {
 				// Centralized Structured Logs
 				r.Get("/logs", logs.HandleSearchLogs(pool))
 				r.Post("/logs/batch", logs.HandleBatchLogs(pool))
+
+				// Distributed Tracing & OpenTelemetry
+				r.Get("/traces", traces.HandleListTraces(pool))
+				r.Get("/traces/{traceID}", traces.HandleGetTrace(pool))
+				r.Post("/traces", traces.HandleIngestTraces(pool))
+				r.Post("/otlp/v1/traces", traces.HandleIngestTraces(pool))
+				r.Post("/v1/traces", traces.HandleIngestTraces(pool))
+
+				// Service Dependency Map & Synthetics
+				r.Get("/service-map", servicemap.HandleGetServiceMap(pool))
+				r.Get("/synthetics", servicemap.HandleGetSynthetics(pool))
+
+				// SLO & Reliability Intelligence
+				r.Get("/slos", slo.HandleListSLOs(pool))
+				r.Post("/slos", slo.HandleCreateSLO(pool))
+
+				// Custom Dashboards
+				r.Get("/dashboards", dashboards.HandleListDashboards(pool))
+				r.Get("/dashboards/{id}", dashboards.HandleGetDashboard(pool))
+				r.Post("/dashboards", dashboards.HandleCreateDashboard(pool))
 
 				// Incident lifecycle & operational actions
 				r.Post("/incidents", incidents.HandleCreateIncident(pool))
