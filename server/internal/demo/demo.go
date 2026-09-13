@@ -14,9 +14,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/sentrix/server/internal/agents"
+	"github.com/sentrix/server/internal/ai"
 	"github.com/sentrix/server/internal/alerts"
 	"github.com/sentrix/server/internal/auth"
+	"github.com/sentrix/server/internal/automation"
+	"github.com/sentrix/server/internal/containers"
 	"github.com/sentrix/server/internal/dashboards"
+	"github.com/sentrix/server/internal/integrations"
 	"github.com/sentrix/server/internal/logs"
 	"github.com/sentrix/server/internal/realtime"
 	"github.com/sentrix/server/internal/servicemap"
@@ -1551,6 +1556,34 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(store.auditLogs)
 		})
+
+		// Agent Fleet Management
+		r.Get("/agents", agents.HandleListAgents(nil))
+		r.Post("/agents/{agentID}/diagnostics", agents.HandleAgentDiagnostics(nil))
+		r.Post("/agents/{agentID}/rotate-credential", agents.HandleRotateCredential(nil))
+		r.Post("/agents/{agentID}/revoke", agents.HandleRevokeAgent(nil))
+
+		// Containers & Kubernetes
+		r.Get("/containers", containers.HandleListContainers(nil))
+		r.Get("/kubernetes/overview", containers.HandleGetK8sOverview(nil))
+		r.Get("/kubernetes/nodes", containers.HandleGetK8sNodes(nil))
+		r.Get("/kubernetes/workloads", containers.HandleGetK8sWorkloads(nil))
+
+		// Incident Intelligence & AI RCA
+		r.Get("/incidents/{incidentID}/rca", ai.HandleGetIncidentRCA(nil))
+		r.Post("/incidents/{incidentID}/postmortem-ai", ai.HandleGeneratePostmortemAI(nil))
+
+		// Operational Runbooks & Safe Automation
+		r.Get("/runbooks", automation.HandleListRunbooks(nil))
+		r.Get("/runbooks/{id}", automation.HandleGetRunbook(nil))
+		r.Post("/runbooks/{id}/execute", automation.HandleExecuteRunbook(nil))
+		r.Get("/automation/executions", automation.HandleListExecutions(nil))
+
+		// Integrations Hub & Dead Letter Queue (DLQ)
+		r.Get("/integrations", integrations.HandleListIntegrations(nil))
+		r.Post("/integrations/test", integrations.HandleTestIntegration(nil))
+		r.Get("/notifications/dlq", integrations.HandleListDLQ(nil))
+		r.Post("/notifications/dlq/{id}/replay", integrations.HandleReplayDLQ(nil))
 	})
 
 	// WebSocket handler

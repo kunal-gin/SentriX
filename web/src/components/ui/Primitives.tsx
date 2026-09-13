@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Info, AlertTriangle, LucideIcon } from 'lucide-react';
 
 export type BadgeVariant = 'healthy' | 'warning' | 'critical' | 'neutral' | 'primary' | 'mono';
@@ -46,17 +46,21 @@ export function Badge({
 
 export function MetricCard({
   label,
+  title,
+  subtitle,
   value,
   unit,
-  icon: Icon,
+  icon,
   trend,
   color = 'primary',
   onClick,
 }: {
-  label: string;
+  label?: string;
+  title?: string;
+  subtitle?: string;
   value: string | number;
   unit?: string;
-  icon: LucideIcon;
+  icon?: any;
   trend?: { value: number; label: string };
   color?: 'primary' | 'warning' | 'healthy' | 'critical';
   onClick?: () => void;
@@ -66,6 +70,9 @@ export function MetricCard({
   if (color === 'healthy') colorClass = 'text-healthy bg-healthy/10 border-healthy/25';
   if (color === 'critical') colorClass = 'text-critical bg-critical/10 border-critical/25';
 
+  const displayLabel = label || title || '';
+  const isComponent = typeof icon === 'function';
+
   return (
     <div
       onClick={onClick}
@@ -74,15 +81,22 @@ export function MetricCard({
       }`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted font-medium">{label}</span>
-        <div className={`p-2 rounded-xl border ${colorClass}`}>
-          <Icon size={16} />
-        </div>
+        <span className="text-xs text-muted font-medium">{displayLabel}</span>
+        {icon && (
+          <div className={`p-2 rounded-xl border ${colorClass}`}>
+            {isComponent ? React.createElement(icon, { size: 16 }) : icon}
+          </div>
+        )}
       </div>
       <div className="flex items-baseline gap-1.5">
         <span className="text-2xl font-black text-white tracking-tight">{value}</span>
         {unit && <span className="text-xs font-mono text-muted">{unit}</span>}
       </div>
+      {subtitle && (
+        <div className="text-[11px] font-mono text-muted truncate">
+          {subtitle}
+        </div>
+      )}
       {trend && (
         <div className="text-[11px] font-mono text-muted flex items-center gap-1">
           <span className={trend.value >= 0 ? 'text-healthy' : 'text-critical'}>
@@ -101,11 +115,15 @@ export function EmptyState({
   description,
   icon: Icon = Info,
   action,
+  actionLabel,
+  onAction,
 }: {
   title: string;
   description: string;
   icon?: LucideIcon;
   action?: ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
   return (
     <div className="p-12 text-center space-y-4 glass-card rounded-2xl border border-border">
@@ -117,6 +135,16 @@ export function EmptyState({
         <p className="text-xs text-muted max-w-sm mx-auto">{description}</p>
       </div>
       {action && <div className="pt-2">{action}</div>}
+      {actionLabel && onAction && (
+        <div className="pt-2">
+          <button
+            onClick={onAction}
+            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-glow-primary transition-all"
+          >
+            {actionLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -174,3 +202,13 @@ export function ConfirmDialog({
     </div>
   );
 }
+
+export function LoadingState({ message = 'Loading...' }: { message?: string }) {
+  return (
+    <div className="p-12 text-center space-y-3 glass-card rounded-2xl border border-border">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+      <p className="text-xs font-mono text-muted">{message}</p>
+    </div>
+  );
+}
+

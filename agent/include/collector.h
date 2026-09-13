@@ -28,6 +28,16 @@ typedef struct {
     ProcessInfo top_processes[MAX_TOP_PROCESSES];
 } SystemMetrics;
 
+typedef struct {
+    char version[32];
+    uint64_t uptime_seconds;
+    double cpu_usage;
+    uint64_t memory_rss_bytes;
+    int queue_size;
+    int64_t telemetry_lag_ms;
+    char connection_state[16]; // ONLINE, DEGRADED, OFFLINE
+} AgentHealth;
+
 // Collectors return 0 on success, -1 on error
 int collect_cpu(double *utilization);
 int collect_memory(uint64_t *total, uint64_t *used);
@@ -36,5 +46,6 @@ int collect_network(uint64_t *rx, uint64_t *tx);
 int collect_system_load(double *load_1m);
 int collect_uptime(uint64_t *seconds);
 int collect_top_processes(ProcessInfo *procs, int max_count, int *out_count);
+int collect_agent_health(AgentHealth *health, int current_queue_size, int64_t last_ack_lag_ms);
 
 #endif

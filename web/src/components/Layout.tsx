@@ -20,6 +20,10 @@ import {
   GitCommit,
   Globe,
   Target,
+  Box,
+  Network,
+  Terminal,
+  Webhook,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtime } from '../hooks/useRealtime';
@@ -34,11 +38,16 @@ const navItems = [
   { path: '/traces', label: 'Distributed Traces', icon: GitCommit, badge: null },
   { path: '/services', label: 'Services Catalog', icon: Layers, badge: null },
   { path: '/infrastructure', label: 'Infrastructure Fleet', icon: Server, badge: null },
+  { path: '/containers', label: 'Containers', icon: Box, badge: null },
+  { path: '/kubernetes', label: 'Kubernetes Fleet', icon: Network, badge: null },
   { path: '/service-map', label: 'Service Dependency Map', icon: Globe, badge: null },
   { path: '/slos', label: 'SLOs & Reliability', icon: Target, badge: null },
   { path: '/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
   { path: '/alerts', label: 'Alert Rules 2.0', icon: BellRing, badge: null },
+  { path: '/runbooks', label: 'Runbooks & Automation', icon: Terminal, badge: null },
   { path: '/checks', label: 'Health Checks', icon: Activity, badge: null },
+  { path: '/agents', label: 'Agent Fleet 2.0', icon: Terminal, badge: null },
+  { path: '/integrations', label: 'Integrations & DLQ', icon: Webhook, badge: null },
   { path: '/notifications', label: 'Notifications', icon: Bell, badge: null },
   { path: '/users', label: 'Team & Access', icon: Users, badge: null },
   { path: '/audit', label: 'Audit Logs', icon: ShieldCheck, badge: null },

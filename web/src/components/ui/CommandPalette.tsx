@@ -20,6 +20,10 @@ import {
   GitCommit,
   Globe,
   Target,
+  Box,
+  Network,
+  Terminal,
+  Webhook,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -120,6 +124,46 @@ export function CommandPalette({
       shortcut: 'G F',
     },
     {
+      id: 'nav-containers',
+      title: 'Docker & OCI Container Observability',
+      category: 'Navigation',
+      icon: Box,
+      action: () => navigate('/containers'),
+      shortcut: 'G C',
+    },
+    {
+      id: 'nav-kubernetes',
+      title: 'Kubernetes Cluster Fleet & Nodes',
+      category: 'Navigation',
+      icon: Network,
+      action: () => navigate('/kubernetes'),
+      shortcut: 'G K',
+    },
+    {
+      id: 'nav-runbooks',
+      title: 'Operational Runbooks & Controlled Automation',
+      category: 'Navigation',
+      icon: Terminal,
+      action: () => navigate('/runbooks'),
+      shortcut: 'G R',
+    },
+    {
+      id: 'nav-agents',
+      title: 'Agent Fleet 2.0 & Diagnostics Suite',
+      category: 'Navigation',
+      icon: Terminal,
+      action: () => navigate('/agents'),
+      shortcut: 'G E',
+    },
+    {
+      id: 'nav-integrations',
+      title: 'Notification Integrations & Dead Letter Queue',
+      category: 'Navigation',
+      icon: Webhook,
+      action: () => navigate('/integrations'),
+      shortcut: 'G N',
+    },
+    {
       id: 'nav-incidents',
       title: 'Incident Triage & Lifecycles',
       category: 'Navigation',
@@ -141,7 +185,7 @@ export function CommandPalette({
       category: 'Navigation',
       icon: Activity,
       action: () => navigate('/checks'),
-      shortcut: 'G C',
+      shortcut: 'G H',
     },
     {
       id: 'nav-notifications',

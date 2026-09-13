@@ -15,14 +15,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sentrix/server/internal/agents"
+	"github.com/sentrix/server/internal/ai"
 	"github.com/sentrix/server/internal/alerts"
 	"github.com/sentrix/server/internal/api"
 	"github.com/sentrix/server/internal/auth"
+	"github.com/sentrix/server/internal/automation"
 	"github.com/sentrix/server/internal/checks"
+	"github.com/sentrix/server/internal/containers"
 	"github.com/sentrix/server/internal/dashboards"
 	"github.com/sentrix/server/internal/demo"
 	"github.com/sentrix/server/internal/health"
 	"github.com/sentrix/server/internal/incidents"
+	"github.com/sentrix/server/internal/integrations"
 	"github.com/sentrix/server/internal/logs"
 	"github.com/sentrix/server/internal/metrics"
 	"github.com/sentrix/server/internal/notifications"
@@ -212,6 +216,32 @@ func main() {
 				r.Post("/incidents/{incidentID}/notes", incidents.HandleAddComment(pool))
 				r.Post("/incidents/{incidentID}/comments", incidents.HandleAddComment(pool))
 				r.Post("/incidents/{incidentID}/postmortem", incidents.HandleSavePostmortem(pool))
+				r.Get("/incidents/{incidentID}/rca", ai.HandleGetIncidentRCA(pool))
+				r.Post("/incidents/{incidentID}/postmortem-ai", ai.HandleGeneratePostmortemAI(pool))
+
+				// Agent Fleet Management
+				r.Get("/agents", agents.HandleListAgents(pool))
+				r.Post("/agents/{agentID}/diagnostics", agents.HandleAgentDiagnostics(pool))
+				r.Post("/agents/{agentID}/rotate-credential", agents.HandleRotateCredential(pool))
+				r.Post("/agents/{agentID}/revoke", agents.HandleRevokeAgent(pool))
+
+				// Containers & Kubernetes
+				r.Get("/containers", containers.HandleListContainers(pool))
+				r.Get("/kubernetes/overview", containers.HandleGetK8sOverview(pool))
+				r.Get("/kubernetes/nodes", containers.HandleGetK8sNodes(pool))
+				r.Get("/kubernetes/workloads", containers.HandleGetK8sWorkloads(pool))
+
+				// Operational Runbooks & Safe Automation
+				r.Get("/runbooks", automation.HandleListRunbooks(pool))
+				r.Get("/runbooks/{id}", automation.HandleGetRunbook(pool))
+				r.Post("/runbooks/{id}/execute", automation.HandleExecuteRunbook(pool))
+				r.Get("/automation/executions", automation.HandleListExecutions(pool))
+
+				// Integrations Hub & Dead Letter Queue (DLQ)
+				r.Get("/integrations", integrations.HandleListIntegrations(pool))
+				r.Post("/integrations/test", integrations.HandleTestIntegration(pool))
+				r.Get("/notifications/dlq", integrations.HandleListDLQ(pool))
+				r.Post("/notifications/dlq/{id}/replay", integrations.HandleReplayDLQ(pool))
 
 				// Checks management
 				r.Post("/checks", checks.HandleCreateCheck(pool))

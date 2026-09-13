@@ -21,6 +21,11 @@ import { TracesPage } from './features/traces/TracesPage';
 import { ServiceMapPage } from './features/servicemap/ServiceMapPage';
 import { SLOPage } from './features/slo/SLOPage';
 import { DashboardsPage } from './features/dashboards/DashboardsPage';
+import { AgentsPage } from './features/agents/AgentsPage';
+import { ContainersPage } from './features/containers/ContainersPage';
+import { KubernetesPage } from './features/kubernetes/KubernetesPage';
+import { RunbooksPage } from './features/automation/RunbooksPage';
+import { IntegrationsPage } from './features/integrations/IntegrationsPage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -230,6 +235,61 @@ function App() {
                 <Protected>
                   <Layout>
                     <DashboardsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/agents"
+              element={
+                <Protected>
+                  <Layout>
+                    <AgentsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/containers"
+              element={
+                <Protected>
+                  <Layout>
+                    <ContainersPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/kubernetes"
+              element={
+                <Protected>
+                  <Layout>
+                    <KubernetesPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/runbooks"
+              element={
+                <Protected>
+                  <Layout>
+                    <RunbooksPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/integrations"
+              element={
+                <Protected>
+                  <Layout>
+                    <IntegrationsPage />
                   </Layout>
                 </Protected>
               }
