@@ -13,6 +13,7 @@ import { ChecksPage } from './features/checks/ChecksPage';
 import { UsersPage } from './features/users/UsersPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { AuditLogsPage } from './features/audit/AuditLogsPage';
+import { MetricsExplorerPage } from './features/metrics/MetricsExplorerPage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -46,6 +47,17 @@ function App() {
                 <Protected>
                   <Layout>
                     <OverviewPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/metrics"
+              element={
+                <Protected>
+                  <Layout>
+                    <MetricsExplorerPage />
                   </Layout>
                 </Protected>
               }

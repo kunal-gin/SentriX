@@ -16,6 +16,7 @@ import (
 
 	"github.com/sentrix/server/internal/agents"
 	"github.com/sentrix/server/internal/alerts"
+	"github.com/sentrix/server/internal/api"
 	"github.com/sentrix/server/internal/auth"
 	"github.com/sentrix/server/internal/checks"
 	"github.com/sentrix/server/internal/demo"
@@ -92,7 +93,7 @@ func main() {
 	}
 
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
+	r.Use(api.RequestIDMiddleware)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
@@ -112,6 +113,11 @@ func main() {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ready"}`))
+	})
+
+	r.Get("/health/startup", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"started"}`))
 	})
 
 	// Prometheus & OpenMetrics self-monitoring exposition
@@ -140,6 +146,8 @@ func main() {
 			r.Group(func(r chi.Router) {
 				r.Use(metrics.AgentAuthMiddleware(pool))
 				r.Post("/agent/telemetry", metrics.HandleTelemetry(pool))
+				r.Post("/telemetry", metrics.HandleBatchTelemetry(pool))
+				r.Post("/telemetry/batch", metrics.HandleBatchTelemetry(pool))
 			})
 
 			// Authenticated user routes

@@ -654,6 +654,90 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 			})
 		})
 
+		r.Get("/metrics/query", func(w http.ResponseWriter, r *http.Request) {
+			metric := r.URL.Query().Get("metric")
+			if metric == "" {
+				metric = "cpu"
+			}
+			rangeParam := r.URL.Query().Get("range")
+			if rangeParam == "" {
+				rangeParam = "1h"
+			}
+
+			numPoints := 60
+			stepMinutes := 1
+			switch rangeParam {
+			case "15m":
+				numPoints = 15
+				stepMinutes = 1
+			case "1h":
+				numPoints = 60
+				stepMinutes = 1
+			case "6h":
+				numPoints = 72
+				stepMinutes = 5
+			case "24h":
+				numPoints = 96
+				stepMinutes = 15
+			case "7d":
+				numPoints = 84
+				stepMinutes = 120
+			}
+
+			now := time.Now().UTC()
+			store.mu.RLock()
+			defer store.mu.RUnlock()
+
+			seriesList := make([]map[string]any, 0, len(store.servers))
+			for _, srv := range store.servers {
+				points := make([]map[string]any, numPoints)
+				baseVal := srv.CPU
+				if metric == "memory" {
+					baseVal = srv.Memory
+				} else if metric == "disk" {
+					baseVal = srv.Disk
+				} else if metric == "network" {
+					baseVal = math.Mod(srv.CPU*1.8, 100.0)
+				}
+
+				for i := numPoints - 1; i >= 0; i-- {
+					t := now.Add(-time.Duration(i*stepMinutes) * time.Minute)
+					noise := math.Sin(float64(i)*0.2+float64(len(srv.Name)))*7.0 + (rand.Float64()-0.5)*3.0
+					v := math.Max(1.0, math.Min(99.0, baseVal+noise))
+					points[numPoints-1-i] = map[string]any{
+						"time":  t.Format(time.RFC3339),
+						"value": math.Round(v*10) / 10,
+					}
+				}
+
+				seriesList = append(seriesList, map[string]any{
+					"server_id":   srv.ID,
+					"server_name": srv.Name,
+					"status":      srv.Status,
+					"points":      points,
+				})
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"metric": metric,
+				"range":  rangeParam,
+				"series": seriesList,
+			})
+		})
+
+		r.Post("/telemetry", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte(`{"status":"accepted","samples_ingested":1}`))
+		})
+
+		r.Post("/telemetry/batch", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte(`{"status":"accepted","samples_ingested":10}`))
+		})
+
 		r.Get("/incidents", func(w http.ResponseWriter, r *http.Request) {
 			statusFilter := r.URL.Query().Get("status")
 			store.mu.RLock()

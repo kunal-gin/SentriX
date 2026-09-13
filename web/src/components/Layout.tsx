@@ -19,9 +19,11 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useRealtime } from '../hooks/useRealtime';
 import { useDashboardSummary } from '../hooks/useDashboard';
+import { CommandPalette } from './ui/CommandPalette';
 
 const navItems = [
   { path: '/', label: 'Fleet Overview', icon: LayoutDashboard, badge: null },
+  { path: '/metrics', label: 'Metrics Explorer', icon: Activity, badge: null },
   { path: '/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
   { path: '/alerts', label: 'Alert Rules', icon: BellRing, badge: null },
   { path: '/checks', label: 'Health Checks', icon: Activity, badge: null },
@@ -36,7 +38,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const wsStatus = useRealtime();
   const { data: summary } = useDashboardSummary();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   async function handleLogout() {
     await logout();
@@ -233,19 +235,16 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
 
           {/* Center search shortcut pill */}
-          <div className="relative w-80 hidden md:block">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" size={14} />
-            <input
-              type="text"
-              placeholder="Quick search nodes, alerts, checks... (⌘K)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface/70 border border-border focus:border-primary/50 rounded-xl pl-9 pr-12 py-1.5 text-xs text-white placeholder-muted focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-highlight text-muted border border-border">
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="relative w-80 hidden md:flex items-center justify-between bg-surface/70 border border-border hover:border-primary/50 rounded-xl pl-9 pr-3 py-1.5 text-xs text-muted hover:text-white transition-all shadow-sm group text-left"
+          >
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-hover:text-primary transition-colors" size={14} />
+            <span>Search platform, nodes, metrics...</span>
+            <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-highlight text-muted border border-border group-hover:border-primary/40 group-hover:text-white transition-colors">
               ⌘K
             </kbd>
-          </div>
+          </button>
 
           {/* Right Live indicators & actions */}
           <div className="flex items-center gap-3">
@@ -269,6 +268,11 @@ export function Layout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+      />
     </div>
   );
 }
