@@ -22,11 +22,13 @@ import (
 	"github.com/sentrix/server/internal/demo"
 	"github.com/sentrix/server/internal/health"
 	"github.com/sentrix/server/internal/incidents"
+	"github.com/sentrix/server/internal/logs"
 	"github.com/sentrix/server/internal/metrics"
 	"github.com/sentrix/server/internal/notifications"
 	"github.com/sentrix/server/internal/realtime"
 	"github.com/sentrix/server/internal/selfmetrics"
 	"github.com/sentrix/server/internal/servers"
+	"github.com/sentrix/server/internal/services"
 	"github.com/sentrix/server/internal/storage"
 )
 
@@ -160,15 +162,32 @@ func main() {
 				r.Get("/servers/{serverID}/metrics", metrics.HandleServerMetrics(pool))
 				r.Get("/incidents", incidents.HandleListIncidents(pool))
 				r.Get("/alerts/rules", alerts.HandleListRules(pool))
+				r.Post("/alerts/simulate", alerts.HandleSimulateRule(pool))
 				r.Get("/checks", checks.HandleListChecks(pool))
 				r.Get("/notifications/channels", notifications.HandleListChannels(pool))
 				r.Get("/silences", alerts.HandleListSilences(pool))
 
-				// Incident lifecycle actions
+				// Services & Infrastructure catalog
+				r.Get("/services", services.HandleListServices(pool))
+				r.Post("/services", services.HandleCreateService(pool))
+				r.Get("/infrastructure", services.HandleGetInfrastructure(pool))
+
+				// Centralized Structured Logs
+				r.Get("/logs", logs.HandleSearchLogs(pool))
+				r.Post("/logs/batch", logs.HandleBatchLogs(pool))
+
+				// Incident lifecycle & operational actions
+				r.Post("/incidents", incidents.HandleCreateIncident(pool))
 				r.Get("/incidents/{incidentID}", incidents.HandleGetIncident(pool))
+				r.Patch("/incidents/{incidentID}", incidents.HandleUpdateIncident(pool))
+				r.Post("/incidents/{incidentID}/ack", incidents.HandleAcknowledge(pool))
 				r.Patch("/incidents/{incidentID}/acknowledge", incidents.HandleAcknowledge(pool))
+				r.Post("/incidents/{incidentID}/investigate", incidents.HandleInvestigate(pool))
+				r.Post("/incidents/{incidentID}/resolve", incidents.HandleResolve(pool))
 				r.Patch("/incidents/{incidentID}/resolve", incidents.HandleResolve(pool))
+				r.Post("/incidents/{incidentID}/notes", incidents.HandleAddComment(pool))
 				r.Post("/incidents/{incidentID}/comments", incidents.HandleAddComment(pool))
+				r.Post("/incidents/{incidentID}/postmortem", incidents.HandleSavePostmortem(pool))
 
 				// Checks management
 				r.Post("/checks", checks.HandleCreateCheck(pool))

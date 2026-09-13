@@ -14,6 +14,9 @@ import { UsersPage } from './features/users/UsersPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { AuditLogsPage } from './features/audit/AuditLogsPage';
 import { MetricsExplorerPage } from './features/metrics/MetricsExplorerPage';
+import { ServicesPage } from './features/services/ServicesPage';
+import { InfrastructurePage } from './features/infrastructure/InfrastructurePage';
+import { CentralLogsPage } from './features/logs/CentralLogsPage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -146,6 +149,39 @@ function App() {
                 <Protected>
                   <Layout>
                     <AuditLogsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/services"
+              element={
+                <Protected>
+                  <Layout>
+                    <ServicesPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/infrastructure"
+              element={
+                <Protected>
+                  <Layout>
+                    <InfrastructurePage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/logs"
+              element={
+                <Protected>
+                  <Layout>
+                    <CentralLogsPage />
                   </Layout>
                 </Protected>
               }

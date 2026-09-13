@@ -31,9 +31,13 @@ export interface IncidentDetail {
   resolved_at: string | null;
   acknowledged_by: string | null;
   resolved_by: string | null;
+  assignee?: string | null;
+  assignee_name?: string | null;
   root_alert_id: string | null;
   root_check_id: string | null;
   summary: string | null;
+  postmortem?: string | null;
+  rca_hypothesis?: string | null;
   comments: IncidentComment[];
   timeline: IncidentTimelineEvent[];
 }
@@ -85,6 +89,47 @@ export function useAddIncidentComment() {
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['incident', variables.incidentId] });
+    },
+  });
+}
+
+export function useInvestigateIncident() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { incidentId: string }) =>
+      mutateJSON(`/incidents/${variables.incidentId}/investigate`, 'POST', {}),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['incident', variables.incidentId] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+    },
+  });
+}
+
+export function useSavePostmortem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { incidentId: string; postmortem: string; rca_hypothesis: string }) =>
+      mutateJSON(`/incidents/${variables.incidentId}/postmortem`, 'POST', {
+        postmortem: variables.postmortem,
+        rca_hypothesis: variables.rca_hypothesis,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['incident', variables.incidentId] });
+    },
+  });
+}
+
+export function useUpdateIncident() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { incidentId: string; payload: { title?: string; severity?: string; assignee_name?: string } }) =>
+      mutateJSON(`/incidents/${variables.incidentId}`, 'PATCH', variables.payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['incident', variables.incidentId] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
     },
   });
 }

@@ -14,8 +14,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/sentrix/server/internal/alerts"
 	"github.com/sentrix/server/internal/auth"
+	"github.com/sentrix/server/internal/logs"
 	"github.com/sentrix/server/internal/realtime"
+	"github.com/sentrix/server/internal/services"
 )
 
 type DemoServer struct {
@@ -30,30 +33,59 @@ type DemoServer struct {
 	Disk      float64   `json:"disk"`
 }
 
+type DemoIncidentComment struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	UserEmail string    `json:"user_email"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type DemoTimelineEvent struct {
+	ID        string    `json:"id"`
+	EventType string    `json:"event_type"`
+	Message   string    `json:"message"`
+	Actor     string    `json:"actor"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type DemoIncident struct {
-	ID             string     `json:"id"`
-	ServerID       string     `json:"server_id"`
-	ServerName     string     `json:"server_name"`
-	Title          string     `json:"title"`
-	Severity       string     `json:"severity"` // CRITICAL, WARNING, INFO
-	Status         string     `json:"status"`   // OPEN, ACKNOWLEDGED, RESOLVED
-	StartedAt      time.Time  `json:"started_at"`
-	AcknowledgedAt *time.Time `json:"acknowledged_at"`
-	ResolvedAt     *time.Time `json:"resolved_at"`
-	Comments       []string   `json:"comments,omitempty"`
+	ID             string                `json:"id"`
+	ServerID       string                `json:"server_id"`
+	ServerName     string                `json:"server_name"`
+	Title          string                `json:"title"`
+	Description    string                `json:"description,omitempty"`
+	Severity       string                `json:"severity"` // CRITICAL, WARNING, INFO
+	Status         string                `json:"status"`   // OPEN, INVESTIGATING, ACKNOWLEDGED, RESOLVED, CLOSED
+	StartedAt      time.Time             `json:"started_at"`
+	AcknowledgedAt *time.Time            `json:"acknowledged_at"`
+	ResolvedAt     *time.Time            `json:"resolved_at"`
+	Assignee       string                `json:"assignee,omitempty"`
+	AssigneeEmail  string                `json:"assignee_email,omitempty"`
+	RootAlertID    string                `json:"root_alert_id,omitempty"`
+	Summary        string                `json:"summary,omitempty"`
+	Postmortem     string                `json:"postmortem,omitempty"`
+	RCAHypothesis  string                `json:"rca_hypothesis,omitempty"`
+	Comments       []DemoIncidentComment `json:"comments,omitempty"`
+	Timeline       []DemoTimelineEvent   `json:"timeline,omitempty"`
 }
 
 type DemoAlertRule struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	Metric          string    `json:"metric"`
-	Operator        string    `json:"operator"`
-	Threshold       float64   `json:"threshold"`
-	WindowSeconds   int       `json:"window_seconds"`
-	Severity        string    `json:"severity"`
-	Enabled         bool      `json:"enabled"`
-	CooldownSeconds int       `json:"cooldown_seconds"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Metric           string    `json:"metric"`
+	RuleType         string    `json:"rule_type"` // THRESHOLD, RATE, PERCENTAGE, RATIO, COMPOSITE, ANOMALY
+	Operator         string    `json:"operator"`
+	Threshold        float64   `json:"threshold"`
+	ResolveThreshold *float64  `json:"resolve_threshold,omitempty"`
+	WindowSeconds    int       `json:"window_seconds"`
+	ForSeconds       int       `json:"for_seconds"`
+	Severity         string    `json:"severity"`
+	Enabled          bool      `json:"enabled"`
+	State            string    `json:"state"` // PENDING, FIRING, ACKNOWLEDGED, RESOLVED, SUPPRESSED
+	Fingerprint      string    `json:"fingerprint"`
+	CooldownSeconds  int       `json:"cooldown_seconds"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type DemoCheck struct {
@@ -204,57 +236,135 @@ func initStore() {
 		Disk:     19.8,
 	}
 
+	resolve75 := 75.0
+	resolve80 := 80.0
+
 	inc1 := &DemoIncident{
 		ID:             "inc-001",
 		ServerID:       s2.ID,
 		ServerName:     s2.Name,
 		Title:          "Memory utilization exceeded 85% threshold",
+		Description:    "Postgres shared buffers and worker connections reached 89.1% of allocated host memory.",
 		Severity:       "WARNING",
 		Status:         "ACKNOWLEDGED",
 		StartedAt:      now.Add(-45 * time.Minute),
 		AcknowledgedAt: &ackTime,
-		Comments: []string{
-			"Investigating Postgres buffer pool cache pressure. Queries look healthy.",
+		Assignee:       "Infrastructure SRE Team",
+		AssigneeEmail:  "infra-sre@sentrix.local",
+		RootAlertID:    "rule-002",
+		Summary:        "PostgreSQL connection pooling saturated memory caches. Active buffer tuning applied.",
+		Postmortem:     "Incident mitigated without customer downtime. Adjusted max_connections pool parameter from 200 to 120 per replica.",
+		RCAHypothesis:  "Spike in batch analytical queries during hourly rollup caused sudden allocation of work_mem buffers.",
+		Comments: []DemoIncidentComment{
+			{
+				ID:        "comm-01",
+				UserID:    "usr-admin-demo",
+				UserEmail: "admin@sentrix.local",
+				Body:      "Investigating Postgres buffer pool cache pressure. Queries look healthy.",
+				CreatedAt: now.Add(-35 * time.Minute),
+			},
+		},
+		Timeline: []DemoTimelineEvent{
+			{
+				ID:        "evt-01",
+				EventType: "OPENED",
+				Message:   "Alert rule 'High Memory Utilization' fired on timescale-db-cluster-01 (89.1% > 85.0%)",
+				Actor:     "AlertEngine",
+				CreatedAt: now.Add(-45 * time.Minute),
+			},
+			{
+				ID:        "evt-02",
+				EventType: "ACKNOWLEDGED",
+				Message:   "Incident acknowledged by admin@sentrix.local",
+				Actor:     "admin@sentrix.local",
+				CreatedAt: ackTime,
+			},
+			{
+				ID:        "evt-03",
+				EventType: "INVESTIGATING",
+				Message:   "Assigned to Infrastructure SRE Team for database buffer tuning",
+				Actor:     "admin@sentrix.local",
+				CreatedAt: now.Add(-25 * time.Minute),
+			},
+		},
+	}
+
+	inc2 := &DemoIncident{
+		ID:             "inc-002",
+		ServerID:       s1.ID,
+		ServerName:     s1.Name,
+		Title:          "Elevated API Gateway Response Latency P99 > 850ms",
+		Description:    "P99 latency crossed nominal threshold of 250ms due to upstream payment webhook retries.",
+		Severity:       "CRITICAL",
+		Status:         "OPEN",
+		StartedAt:      now.Add(-14 * time.Minute),
+		Assignee:       "Payments Engineering",
+		AssigneeEmail:  "payments@sentrix.local",
+		Summary:        "Underlying third-party gateway response delays propagating back to ingress proxies.",
+		Comments:       []DemoIncidentComment{},
+		Timeline: []DemoTimelineEvent{
+			{
+				ID:        "evt-10",
+				EventType: "OPENED",
+				Message:   "Automatic incident created from latency breach on production-api-01",
+				Actor:     "AlertEngine",
+				CreatedAt: now.Add(-14 * time.Minute),
+			},
 		},
 	}
 
 	r1 := &DemoAlertRule{
-		ID:              "rule-001",
-		Name:            "High CPU Utilization",
-		Metric:          "system.cpu.utilization",
-		Operator:        ">",
-		Threshold:       85.0,
-		WindowSeconds:   60,
-		Severity:        "CRITICAL",
-		Enabled:         true,
-		CooldownSeconds: 300,
-		CreatedAt:       now.Add(-72 * time.Hour),
+		ID:               "rule-001",
+		Name:             "High CPU Utilization",
+		Metric:           "system.cpu.utilization",
+		RuleType:         "THRESHOLD",
+		Operator:         ">",
+		Threshold:        85.0,
+		ResolveThreshold: &resolve75,
+		WindowSeconds:    60,
+		ForSeconds:       300,
+		Severity:         "CRITICAL",
+		Enabled:          true,
+		State:            "OK",
+		Fingerprint:      "rule-001:production-api:cluster-us-east",
+		CooldownSeconds:  300,
+		CreatedAt:        now.Add(-72 * time.Hour),
 	}
 
 	r2 := &DemoAlertRule{
-		ID:              "rule-002",
-		Name:            "High Memory Utilization",
-		Metric:          "system.memory.utilization",
-		Operator:        ">",
-		Threshold:       85.0,
-		WindowSeconds:   120,
-		Severity:        "WARNING",
-		Enabled:         true,
-		CooldownSeconds: 300,
-		CreatedAt:       now.Add(-72 * time.Hour),
+		ID:               "rule-002",
+		Name:             "High Memory Utilization",
+		Metric:           "system.memory.utilization",
+		RuleType:         "THRESHOLD",
+		Operator:         ">",
+		Threshold:        85.0,
+		ResolveThreshold: &resolve75,
+		WindowSeconds:    120,
+		ForSeconds:       180,
+		Severity:         "WARNING",
+		Enabled:          true,
+		State:            "FIRING",
+		Fingerprint:      "rule-002:timescale-db:cluster-us-east",
+		CooldownSeconds:  300,
+		CreatedAt:        now.Add(-72 * time.Hour),
 	}
 
 	r3 := &DemoAlertRule{
-		ID:              "rule-003",
-		Name:            "Disk Space Critical",
-		Metric:          "system.disk.utilization",
-		Operator:        ">",
-		Threshold:       90.0,
-		WindowSeconds:   300,
-		Severity:        "CRITICAL",
-		Enabled:         true,
-		CooldownSeconds: 600,
-		CreatedAt:       now.Add(-72 * time.Hour),
+		ID:               "rule-003",
+		Name:             "Disk Space Critical",
+		Metric:           "system.disk.utilization",
+		RuleType:         "THRESHOLD",
+		Operator:         ">",
+		Threshold:        90.0,
+		ResolveThreshold: &resolve80,
+		WindowSeconds:    300,
+		ForSeconds:       600,
+		Severity:         "CRITICAL",
+		Enabled:          true,
+		State:            "OK",
+		Fingerprint:      "rule-003:timescale-db:root-partition",
+		CooldownSeconds:  600,
+		CreatedAt:        now.Add(-72 * time.Hour),
 	}
 
 	chk1 := &DemoCheck{
@@ -306,6 +416,7 @@ func initStore() {
 		},
 		incidents: map[string]*DemoIncident{
 			inc1.ID: inc1,
+			inc2.ID: inc2,
 		},
 		alertRules: map[string]*DemoAlertRule{
 			r1.ID: r1,
@@ -755,7 +866,106 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 			json.NewEncoder(w).Encode(list)
 		})
 
-		r.Patch("/incidents/{incidentID}/acknowledge", func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/incidents", func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				ServerID    string `json:"server_id"`
+				Title       string `json:"title"`
+				Description string `json:"description"`
+				Severity    string `json:"severity"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+
+			store.mu.Lock()
+			defer store.mu.Unlock()
+
+			serverName := "production-api-01"
+			if s, exists := store.servers[body.ServerID]; exists {
+				serverName = s.Name
+			}
+
+			now := time.Now().UTC()
+			incID := "inc-" + uuid.New().String()[:8]
+			newInc := &DemoIncident{
+				ID:          incID,
+				ServerID:    body.ServerID,
+				ServerName:  serverName,
+				Title:       body.Title,
+				Description: body.Description,
+				Severity:    body.Severity,
+				Status:      "OPEN",
+				StartedAt:   now,
+				Summary:     body.Description,
+				Comments:    []DemoIncidentComment{},
+				Timeline: []DemoTimelineEvent{
+					{
+						ID:        "evt-" + uuid.New().String()[:6],
+						EventType: "OPENED",
+						Message:   "Incident created manually: " + body.Title,
+						Actor:     "admin@sentrix.local",
+						CreatedAt: now,
+					},
+				},
+			}
+			store.incidents[incID] = newInc
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(newInc)
+		})
+
+		r.Get("/incidents/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "incidentID")
+			store.mu.RLock()
+			defer store.mu.RUnlock()
+
+			if inc, exists := store.incidents[id]; exists {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(inc)
+				return
+			}
+			http.Error(w, "incident not found", http.StatusNotFound)
+		})
+
+		r.Patch("/incidents/{incidentID}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "incidentID")
+			var body struct {
+				Title        *string `json:"title"`
+				Severity     *string `json:"severity"`
+				Assignee     *string `json:"assignee"`
+				AssigneeName *string `json:"assignee_name"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+
+			store.mu.Lock()
+			defer store.mu.Unlock()
+
+			if inc, exists := store.incidents[id]; exists {
+				if body.Title != nil {
+					inc.Title = *body.Title
+				}
+				if body.Severity != nil {
+					inc.Severity = *body.Severity
+				}
+				if body.AssigneeName != nil {
+					inc.Assignee = *body.AssigneeName
+				} else if body.Assignee != nil {
+					inc.Assignee = *body.Assignee
+				}
+				inc.Timeline = append(inc.Timeline, DemoTimelineEvent{
+					ID:        "evt-" + uuid.New().String()[:6],
+					EventType: "SYSTEM",
+					Message:   "Incident properties updated",
+					Actor:     "admin@sentrix.local",
+					CreatedAt: time.Now().UTC(),
+				})
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(inc)
+				return
+			}
+			http.Error(w, "incident not found", http.StatusNotFound)
+		})
+
+		ackHandler := func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "incidentID")
 			store.mu.Lock()
 			defer store.mu.Unlock()
@@ -764,6 +974,37 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 				now := time.Now().UTC()
 				inc.Status = "ACKNOWLEDGED"
 				inc.AcknowledgedAt = &now
+				inc.Timeline = append(inc.Timeline, DemoTimelineEvent{
+					ID:        "evt-" + uuid.New().String()[:6],
+					EventType: "ACKNOWLEDGED",
+					Message:   "Incident acknowledged by admin@sentrix.local",
+					Actor:     "admin@sentrix.local",
+					CreatedAt: now,
+				})
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(inc)
+				return
+			}
+			http.Error(w, "incident not found", http.StatusNotFound)
+		}
+		r.Post("/incidents/{incidentID}/ack", ackHandler)
+		r.Patch("/incidents/{incidentID}/acknowledge", ackHandler)
+
+		r.Post("/incidents/{incidentID}/investigate", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "incidentID")
+			store.mu.Lock()
+			defer store.mu.Unlock()
+
+			if inc, exists := store.incidents[id]; exists {
+				now := time.Now().UTC()
+				inc.Status = "INVESTIGATING"
+				inc.Timeline = append(inc.Timeline, DemoTimelineEvent{
+					ID:        "evt-" + uuid.New().String()[:6],
+					EventType: "INVESTIGATING",
+					Message:   "Root-cause investigation active",
+					Actor:     "admin@sentrix.local",
+					CreatedAt: now,
+				})
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(inc)
 				return
@@ -771,7 +1012,7 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 			http.Error(w, "incident not found", http.StatusNotFound)
 		})
 
-		r.Patch("/incidents/{incidentID}/resolve", func(w http.ResponseWriter, r *http.Request) {
+		resolveHandler := func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "incidentID")
 			store.mu.Lock()
 			defer store.mu.Unlock()
@@ -780,14 +1021,23 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 				now := time.Now().UTC()
 				inc.Status = "RESOLVED"
 				inc.ResolvedAt = &now
+				inc.Timeline = append(inc.Timeline, DemoTimelineEvent{
+					ID:        "evt-" + uuid.New().String()[:6],
+					EventType: "RESOLVED",
+					Message:   "Incident resolved by admin@sentrix.local",
+					Actor:     "admin@sentrix.local",
+					CreatedAt: now,
+				})
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(inc)
 				return
 			}
 			http.Error(w, "incident not found", http.StatusNotFound)
-		})
+		}
+		r.Post("/incidents/{incidentID}/resolve", resolveHandler)
+		r.Patch("/incidents/{incidentID}/resolve", resolveHandler)
 
-		r.Post("/incidents/{incidentID}/comments", func(w http.ResponseWriter, r *http.Request) {
+		commentHandler := func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "incidentID")
 			var body struct {
 				Body string `json:"body"`
@@ -798,13 +1048,70 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 			defer store.mu.Unlock()
 
 			if inc, exists := store.incidents[id]; exists {
-				inc.Comments = append(inc.Comments, body.Body)
+				now := time.Now().UTC()
+				comm := DemoIncidentComment{
+					ID:        "comm-" + uuid.New().String()[:6],
+					UserID:    "usr-admin-demo",
+					UserEmail: "admin@sentrix.local",
+					Body:      body.Body,
+					CreatedAt: now,
+				}
+				inc.Comments = append(inc.Comments, comm)
+				inc.Timeline = append(inc.Timeline, DemoTimelineEvent{
+					ID:        "evt-" + uuid.New().String()[:6],
+					EventType: "COMMENT",
+					Message:   body.Body,
+					Actor:     "admin@sentrix.local",
+					CreatedAt: now,
+				})
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]any{"status": "comment_added"})
 				return
 			}
 			http.Error(w, "incident not found", http.StatusNotFound)
+		}
+		r.Post("/incidents/{incidentID}/comments", commentHandler)
+		r.Post("/incidents/{incidentID}/notes", commentHandler)
+
+		r.Post("/incidents/{incidentID}/postmortem", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "incidentID")
+			var body struct {
+				Postmortem    string `json:"postmortem"`
+				RCAHypothesis string `json:"rca_hypothesis"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+
+			store.mu.Lock()
+			defer store.mu.Unlock()
+
+			if inc, exists := store.incidents[id]; exists {
+				inc.Postmortem = body.Postmortem
+				inc.RCAHypothesis = body.RCAHypothesis
+				inc.Timeline = append(inc.Timeline, DemoTimelineEvent{
+					ID:        "evt-" + uuid.New().String()[:6],
+					EventType: "SYSTEM",
+					Message:   "Postmortem and RCA analysis saved",
+					Actor:     "admin@sentrix.local",
+					CreatedAt: time.Now().UTC(),
+				})
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]any{"status": "postmortem_saved"})
+				return
+			}
+			http.Error(w, "incident not found", http.StatusNotFound)
 		})
+
+		// Alert simulation endpoint
+		r.Post("/alerts/simulate", alerts.HandleSimulateRule(nil))
+
+		// Services & Infrastructure catalog
+		r.Get("/services", services.HandleListServices(nil))
+		r.Post("/services", services.HandleCreateService(nil))
+		r.Get("/infrastructure", services.HandleGetInfrastructure(nil))
+
+		// Centralized Logs
+		r.Get("/logs", logs.HandleSearchLogs(nil))
+		r.Post("/logs/batch", logs.HandleBatchLogs(nil))
 
 		r.Get("/alerts/rules", func(w http.ResponseWriter, r *http.Request) {
 			store.mu.RLock()

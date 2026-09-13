@@ -15,6 +15,8 @@ import {
   Users,
   Bell,
   ShieldCheck,
+  FileText,
+  Server,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtime } from '../hooks/useRealtime';
@@ -24,8 +26,11 @@ import { CommandPalette } from './ui/CommandPalette';
 const navItems = [
   { path: '/', label: 'Fleet Overview', icon: LayoutDashboard, badge: null },
   { path: '/metrics', label: 'Metrics Explorer', icon: Activity, badge: null },
+  { path: '/logs', label: 'Central Logs', icon: FileText, badge: null },
+  { path: '/services', label: 'Services Catalog', icon: Layers, badge: null },
+  { path: '/infrastructure', label: 'Infrastructure Fleet', icon: Server, badge: null },
   { path: '/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
-  { path: '/alerts', label: 'Alert Rules', icon: BellRing, badge: null },
+  { path: '/alerts', label: 'Alert Rules 2.0', icon: BellRing, badge: null },
   { path: '/checks', label: 'Health Checks', icon: Activity, badge: null },
   { path: '/notifications', label: 'Notifications', icon: Bell, badge: null },
   { path: '/users', label: 'Team & Access', icon: Users, badge: null },

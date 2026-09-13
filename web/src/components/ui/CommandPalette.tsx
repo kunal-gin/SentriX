@@ -15,6 +15,8 @@ import {
   Sparkles,
   Server,
   FileCode,
+  FileText,
+  Layers,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -57,6 +59,30 @@ export function CommandPalette({
       icon: Activity,
       action: () => navigate('/metrics'),
       shortcut: 'G M',
+    },
+    {
+      id: 'nav-logs',
+      title: 'Centralized Structured Logs (Live Tail)',
+      category: 'Navigation',
+      icon: FileText,
+      action: () => navigate('/logs'),
+      shortcut: 'G L',
+    },
+    {
+      id: 'nav-services',
+      title: 'Service Catalog & Microservice Tiers',
+      category: 'Navigation',
+      icon: Layers,
+      action: () => navigate('/services'),
+      shortcut: 'G S',
+    },
+    {
+      id: 'nav-infrastructure',
+      title: 'Infrastructure & Host Fleet Matrix',
+      category: 'Navigation',
+      icon: Server,
+      action: () => navigate('/infrastructure'),
+      shortcut: 'G F',
     },
     {
       id: 'nav-incidents',

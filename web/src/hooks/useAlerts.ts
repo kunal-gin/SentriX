@@ -5,21 +5,25 @@ export interface AlertRule {
   id: string;
   name: string;
   metric: string;
+  rule_type?: string; // THRESHOLD, RATE, PERCENTAGE, RATIO, COMPOSITE, ANOMALY
   operator: string;
   threshold: number;
   window_seconds: number;
   for_seconds: number;
   severity: string;
   enabled: boolean;
+  state?: string; // OK, PENDING, FIRING, ACKNOWLEDGED, RESOLVED, SUPPRESSED
+  fingerprint?: string;
   cooldown_seconds: number;
   resolve_threshold: number | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface CreateAlertRuleInput {
   name: string;
   metric: string;
+  rule_type?: string;
   operator: string;
   threshold: number;
   window_seconds: number;
@@ -28,6 +32,26 @@ export interface CreateAlertRuleInput {
   enabled: boolean;
   cooldown_seconds: number;
   resolve_threshold: number | null;
+}
+
+export interface SimulateAlertRuleInput {
+  metric: string;
+  operator: string;
+  threshold: number;
+  resolve_threshold?: number | null;
+  window_seconds: number;
+  for_seconds: number;
+  cooldown_seconds: number;
+  period?: string;
+}
+
+export interface SimulationResult {
+  period: string;
+  evaluated_samples: number;
+  would_fire_times: number;
+  would_create_incidents: number;
+  noise_reduction_percent: number;
+  sample_breaches: Array<{ timestamp: string; value: number; server_id: string }>;
 }
 
 export interface Incident {
@@ -78,5 +102,12 @@ export function useIncidents(status: 'open' | 'all' = 'open') {
     queryKey: ['incidents', status],
     queryFn: () => fetchJSON(`/incidents?status=${status}`),
     refetchInterval: 5000,
+  });
+}
+
+export function useSimulateAlertRule() {
+  return useMutation({
+    mutationFn: (payload: SimulateAlertRuleInput) =>
+      mutateJSON<SimulationResult>('/alerts/simulate', 'POST', payload),
   });
 }
