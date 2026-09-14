@@ -26,6 +26,17 @@ import { ContainersPage } from './features/containers/ContainersPage';
 import { KubernetesPage } from './features/kubernetes/KubernetesPage';
 import { RunbooksPage } from './features/automation/RunbooksPage';
 import { IntegrationsPage } from './features/integrations/IntegrationsPage';
+import { SecurityCenterPage } from './features/security/SecurityCenterPage';
+import { OrganizationsPage } from './features/organizations/OrganizationsPage';
+import { DeploymentsPage } from './features/deployments/DeploymentsPage';
+import { DeveloperPlatformPage } from './features/developer/DeveloperPlatformPage';
+import { ScaleBenchmarksPage } from './features/scale/ScaleBenchmarksPage';
+import { CapacityFinOpsPage } from './features/capacity/CapacityFinOpsPage';
+import { DatabasesPage } from './features/databases/DatabasesPage';
+import { NetworkPage } from './features/network/NetworkPage';
+import { BillingPlansPage } from './features/billing/BillingPlansPage';
+import { CompliancePage } from './features/compliance/CompliancePage';
+import { IntelligencePage } from './features/intelligence/IntelligencePage';
 import { LoginPage } from './features/auth/LoginPage';
 
 const queryClient = new QueryClient();
@@ -290,6 +301,171 @@ function App() {
                 <Protected>
                   <Layout>
                     <IntegrationsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/security"
+              element={
+                <Protected>
+                  <Layout>
+                    <SecurityCenterPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/organizations"
+              element={
+                <Protected>
+                  <Layout>
+                    <OrganizationsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/deployments"
+              element={
+                <Protected>
+                  <Layout>
+                    <DeploymentsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/changes"
+              element={
+                <Protected>
+                  <Layout>
+                    <DeploymentsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/api-keys"
+              element={
+                <Protected>
+                  <Layout>
+                    <DeveloperPlatformPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/api-docs"
+              element={
+                <Protected>
+                  <Layout>
+                    <DeveloperPlatformPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/scale"
+              element={
+                <Protected>
+                  <Layout>
+                    <ScaleBenchmarksPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/capacity"
+              element={
+                <Protected>
+                  <Layout>
+                    <CapacityFinOpsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/finops"
+              element={
+                <Protected>
+                  <Layout>
+                    <CapacityFinOpsPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/databases"
+              element={
+                <Protected>
+                  <Layout>
+                    <DatabasesPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/network"
+              element={
+                <Protected>
+                  <Layout>
+                    <NetworkPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/billing"
+              element={
+                <Protected>
+                  <Layout>
+                    <BillingPlansPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/plans"
+              element={
+                <Protected>
+                  <Layout>
+                    <BillingPlansPage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/compliance"
+              element={
+                <Protected>
+                  <Layout>
+                    <CompliancePage />
+                  </Layout>
+                </Protected>
+              }
+            />
+
+            <Route
+              path="/intelligence"
+              element={
+                <Protected>
+                  <Layout>
+                    <IntelligencePage />
                   </Layout>
                 </Protected>
               }

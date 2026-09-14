@@ -12,6 +12,7 @@ import {
   Check,
   Search,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 
 export function SLOPage() {
@@ -36,7 +37,12 @@ export function SLOPage() {
       time_window: timeWindow,
       error_budget_minutes: 21.6,
       consumed_minutes: 2.1,
+      remaining_budget_percent: 90.3,
       burn_rate: 0.95,
+      burn_rate_1h: 0.9,
+      burn_rate_6h: 1.0,
+      burn_alert_triggered: false,
+      burn_alert_type: 'NONE',
       status: 'HEALTHY',
     });
     setName('');
@@ -48,14 +54,17 @@ export function SLOPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            Service Level Objectives (SLOs)
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+              <Zap className="text-primary-light" size={28} />
+              Service Level Objectives (SLOs) & Reliability
+            </h1>
             <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-primary/20 text-primary-light border border-primary/30">
-              Reliability Engineering
+              Phase 19
             </span>
-          </h1>
+          </div>
           <p className="text-sm text-muted mt-1">
-            Error budget tracking, consumption burn rates, and deterministic reliability metrics.
+            Google SRE multi-window multi-burn-rate alerting (14.4x fast burn, 6x slow burn), error budgets & deterministic reliability
           </p>
         </div>
 
@@ -69,26 +78,35 @@ export function SLOPage() {
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="glass-card rounded-2xl p-5 border border-border">
           <div className="text-[11px] font-mono text-muted uppercase">Fleet Reliability Score</div>
           <div className="text-3xl font-bold text-healthy font-mono mt-1">99.96%</div>
-          <div className="text-xs text-muted mt-1">Within target nominal tolerances across all services</div>
+          <div className="text-xs text-muted mt-1">Across all registered microservices</div>
         </div>
 
         <div className="glass-card rounded-2xl p-5 border border-border">
           <div className="text-[11px] font-mono text-muted uppercase">Error Budget Health</div>
-          <div className="text-3xl font-bold text-white font-mono mt-1">72% Left</div>
-          <div className="text-xs text-muted mt-1">Average remaining downtime allowance over 30d window</div>
+          <div className="text-3xl font-bold text-white font-mono mt-1">68.4% Left</div>
+          <div className="text-xs text-muted mt-1">Weighted allowance across 30d windows</div>
         </div>
 
         <div className="glass-card rounded-2xl p-5 border border-border">
-          <div className="text-[11px] font-mono text-muted uppercase">Mean Burn Rate</div>
-          <div className="text-3xl font-bold text-primary-light font-mono mt-1 flex items-center gap-2">
-            <Flame size={24} className="text-warning" />
-            1.1x
+          <div className="text-[11px] font-mono text-muted uppercase">1h Fast Burn Window</div>
+          <div className="text-3xl font-bold text-warning font-mono mt-1 flex items-center gap-2">
+            <Flame size={24} className="text-warning animate-pulse" />
+            14.8x Peak
           </div>
-          <div className="text-xs text-muted mt-1">Nominal budget depletion speed (1.0x is balanced)</div>
+          <div className="text-xs text-muted mt-1">Telemetry pipeline triggering fast burn</div>
+        </div>
+
+        <div className="glass-card rounded-2xl p-5 border border-border">
+          <div className="text-[11px] font-mono text-muted uppercase">Burn Alert Status</div>
+          <div className="text-2xl font-bold text-critical font-mono mt-1 flex items-center gap-2">
+            <AlertTriangle size={20} className="text-critical" />
+            1 Active
+          </div>
+          <div className="text-xs text-muted mt-1">14.4x error budget threshold exceeded</div>
         </div>
       </div>
 
@@ -103,16 +121,28 @@ export function SLOPage() {
         {(slos || []).map((slo) => {
           const isHealthy = slo.status === 'HEALTHY';
           const isAtRisk = slo.status === 'AT_RISK';
-          const budgetPct = Math.max(
-            0,
-            Math.min(100, Math.round(((slo.error_budget_minutes - slo.consumed_minutes) / slo.error_budget_minutes) * 100))
-          );
+          const budgetPct =
+            slo.remaining_budget_percent !== undefined
+              ? slo.remaining_budget_percent
+              : Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    Math.round(
+                      ((slo.error_budget_minutes - slo.consumed_minutes) /
+                        slo.error_budget_minutes) *
+                        100
+                    )
+                  )
+                );
 
           return (
             <div
               key={slo.id}
               className={`glass-card rounded-2xl p-6 border flex flex-col justify-between space-y-5 transition-all ${
-                isAtRisk ? 'border-warning/50 bg-warning/5 shadow-glow-warning' : 'border-border'
+                isAtRisk
+                  ? 'border-warning/50 bg-warning/5 shadow-glow-warning'
+                  : 'border-border'
               }`}
             >
               <div className="space-y-3">
@@ -120,16 +150,24 @@ export function SLOPage() {
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-border text-primary-light">
                     {slo.service}
                   </span>
-                  <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                      isHealthy
-                        ? 'bg-healthy/15 text-healthy border-healthy/30'
-                        : 'bg-warning/15 text-warning border-warning/30 animate-pulse'
-                    }`}
-                  >
-                    {isHealthy ? <CheckCircle2 size={11} /> : <AlertTriangle size={11} />}
-                    {slo.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {slo.burn_alert_triggered && (
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-critical/20 text-critical border border-critical/30 animate-pulse flex items-center gap-1">
+                        <Flame size={11} />
+                        FAST BURN
+                      </span>
+                    )}
+                    <span
+                      className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                        isHealthy
+                          ? 'bg-healthy/15 text-healthy border-healthy/30'
+                          : 'bg-warning/15 text-warning border-warning/30'
+                      }`}
+                    >
+                      {isHealthy ? <CheckCircle2 size={11} /> : <AlertTriangle size={11} />}
+                      {slo.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
@@ -145,13 +183,17 @@ export function SLOPage() {
                 <div className="p-3.5 rounded-xl bg-background/60 border border-border/70 flex items-center justify-between">
                   <div>
                     <div className="text-[10px] font-mono text-muted uppercase">Target</div>
-                    <div className="text-sm font-bold text-white font-mono mt-0.5">{slo.target_percent}%</div>
+                    <div className="text-sm font-bold text-white font-mono mt-0.5">
+                      {slo.target_percent}%
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-[10px] font-mono text-muted uppercase">Current Actual</div>
                     <div
                       className={`text-lg font-bold font-mono mt-0.5 ${
-                        slo.current_percent >= slo.target_percent ? 'text-healthy' : 'text-critical'
+                        slo.current_percent >= slo.target_percent
+                          ? 'text-healthy'
+                          : 'text-critical'
                       }`}
                     >
                       {slo.current_percent}%
@@ -168,7 +210,11 @@ export function SLOPage() {
                   <div className="w-full bg-surface-highlight rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        budgetPct > 50 ? 'bg-healthy' : budgetPct > 20 ? 'bg-warning' : 'bg-critical'
+                        budgetPct > 50
+                          ? 'bg-healthy'
+                          : budgetPct > 20
+                          ? 'bg-warning'
+                          : 'bg-critical'
                       }`}
                       style={{ width: `${budgetPct}%` }}
                     />
@@ -178,14 +224,47 @@ export function SLOPage() {
                     <span>Allowed: {slo.error_budget_minutes}m</span>
                   </div>
                 </div>
+
+                {/* Multi-Window SRE Multipliers */}
+                <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+                  <div className="p-2 rounded-lg bg-surface/50 border border-border">
+                    <div className="text-[10px] text-muted">1h Short Window</div>
+                    <div
+                      className={`font-bold mt-0.5 flex items-center gap-1 ${
+                        (slo.burn_rate_1h ?? 1) > 10 ? 'text-critical' : 'text-white'
+                      }`}
+                    >
+                      <Flame size={11} />
+                      {slo.burn_rate_1h ?? slo.burn_rate}x
+                      <span className="text-[9px] text-muted font-normal">(14.4x limit)</span>
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-surface/50 border border-border">
+                    <div className="text-[10px] text-muted">6h Long Window</div>
+                    <div
+                      className={`font-bold mt-0.5 flex items-center gap-1 ${
+                        (slo.burn_rate_6h ?? 1) > 5 ? 'text-warning' : 'text-white'
+                      }`}
+                    >
+                      <Clock size={11} />
+                      {slo.burn_rate_6h ?? slo.burn_rate}x
+                      <span className="text-[9px] text-muted font-normal">(6.0x limit)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Footer with Burn Rate */}
+              {/* Footer with Overall 30d Burn Rate */}
               <div className="pt-3 border-t border-border/60 flex items-center justify-between text-[11px] font-mono">
-                <span className="text-muted">Burn Rate:</span>
+                <span className="text-muted">30d Nominal Burn:</span>
                 <span
                   className={`font-bold flex items-center gap-1 ${
-                    slo.burn_rate > 2.0 ? 'text-critical' : slo.burn_rate > 1.2 ? 'text-warning' : 'text-healthy'
+                    slo.burn_rate > 2.0
+                      ? 'text-critical'
+                      : slo.burn_rate > 1.2
+                      ? 'text-warning'
+                      : 'text-healthy'
                   }`}
                 >
                   <Flame size={12} />
@@ -208,7 +287,9 @@ export function SLOPage() {
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-muted mb-1">SLO Objective Name</label>
+                <label className="block text-xs font-mono text-muted mb-1">
+                  SLO Objective Name
+                </label>
                 <input
                   type="text"
                   required
@@ -250,7 +331,9 @@ export function SLOPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-mono text-muted mb-1">Target Percentage (%)</label>
+                  <label className="block text-xs font-mono text-muted mb-1">
+                    Target Percentage (%)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -261,7 +344,9 @@ export function SLOPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-muted mb-1">Evaluation Window</label>
+                  <label className="block text-xs font-mono text-muted mb-1">
+                    Evaluation Window
+                  </label>
                   <select
                     value={timeWindow}
                     onChange={(e) => setTimeWindow(e.target.value)}

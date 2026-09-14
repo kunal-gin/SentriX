@@ -34,11 +34,20 @@ export function Badge({
       break;
   }
 
+  const renderBadgeIcon = () => {
+    if (!Icon) return null;
+    if (React.isValidElement(Icon)) return Icon;
+    if (typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null)) {
+      return React.createElement(Icon as any, { size: 12 });
+    }
+    return null;
+  };
+
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles} ${className}`}
     >
-      {Icon && <Icon size={12} />}
+      {renderBadgeIcon()}
       <span>{children}</span>
     </span>
   );
@@ -71,7 +80,15 @@ export function MetricCard({
   if (color === 'critical') colorClass = 'text-critical bg-critical/10 border-critical/25';
 
   const displayLabel = label || title || '';
-  const isComponent = typeof icon === 'function';
+
+  const renderIcon = () => {
+    if (!icon) return null;
+    if (React.isValidElement(icon)) return icon;
+    if (typeof icon === 'function' || (typeof icon === 'object' && icon !== null)) {
+      return React.createElement(icon as any, { size: 16 });
+    }
+    return null;
+  };
 
   return (
     <div
@@ -84,7 +101,7 @@ export function MetricCard({
         <span className="text-xs text-muted font-medium">{displayLabel}</span>
         {icon && (
           <div className={`p-2 rounded-xl border ${colorClass}`}>
-            {isComponent ? React.createElement(icon, { size: 16 }) : icon}
+            {renderIcon()}
           </div>
         )}
       </div>

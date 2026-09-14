@@ -24,6 +24,14 @@ import {
   Network,
   Terminal,
   Webhook,
+  Building2,
+  Rocket,
+  Code,
+  TrendingUp,
+  Database,
+  CreditCard,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtime } from '../hooks/useRealtime';
@@ -31,6 +39,7 @@ import { useDashboardSummary } from '../hooks/useDashboard';
 import { CommandPalette } from './ui/CommandPalette';
 
 const navItems = [
+  // OBSERVE
   { path: '/', label: 'Fleet Overview', icon: LayoutDashboard, badge: null },
   { path: '/dashboards', label: 'Custom Dashboards', icon: LayoutDashboard, badge: null },
   { path: '/metrics', label: 'Metrics Explorer', icon: Activity, badge: null },
@@ -40,15 +49,31 @@ const navItems = [
   { path: '/infrastructure', label: 'Infrastructure Fleet', icon: Server, badge: null },
   { path: '/containers', label: 'Containers', icon: Box, badge: null },
   { path: '/kubernetes', label: 'Kubernetes Fleet', icon: Network, badge: null },
-  { path: '/service-map', label: 'Service Dependency Map', icon: Globe, badge: null },
-  { path: '/slos', label: 'SLOs & Reliability', icon: Target, badge: null },
+  { path: '/databases', label: 'Databases & Postgres', icon: Database, badge: null },
+  { path: '/network', label: 'Deep Network & TCP', icon: Network, badge: null },
+
+  // RELIABILITY
   { path: '/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
   { path: '/alerts', label: 'Alert Rules 2.0', icon: BellRing, badge: null },
-  { path: '/runbooks', label: 'Runbooks & Automation', icon: Terminal, badge: null },
+  { path: '/slos', label: 'SLOs & Reliability', icon: Target, badge: null },
   { path: '/checks', label: 'Health Checks', icon: Activity, badge: null },
+  { path: '/runbooks', label: 'Runbooks & Automation', icon: Terminal, badge: null },
+
+  // ANALYZE & INTELLIGENCE
+  { path: '/service-map', label: 'Service Dependency Map', icon: Globe, badge: null },
+  { path: '/intelligence', label: 'Intelligence 2.0 RCA', icon: Sparkles, badge: null },
+  { path: '/deployments', label: 'Deployments & Changes', icon: Rocket, badge: null },
+  { path: '/capacity', label: 'Capacity & FinOps', icon: TrendingUp, badge: null },
+  { path: '/scale', label: 'HA & Scale Benchmarks', icon: Zap, badge: null },
+
+  // PLATFORM & ADMIN
+  { path: '/security', label: 'Security Center', icon: Shield, badge: null },
+  { path: '/organizations', label: 'Organizations & Teams', icon: Building2, badge: null },
+  { path: '/api-keys', label: 'Developer Platform', icon: Code, badge: null },
+  { path: '/billing', label: 'Plans & Metering', icon: CreditCard, badge: null },
+  { path: '/compliance', label: 'Compliance & DR', icon: ShieldCheck, badge: null },
   { path: '/agents', label: 'Agent Fleet 2.0', icon: Terminal, badge: null },
   { path: '/integrations', label: 'Integrations & DLQ', icon: Webhook, badge: null },
-  { path: '/notifications', label: 'Notifications', icon: Bell, badge: null },
   { path: '/users', label: 'Team & Access', icon: Users, badge: null },
   { path: '/audit', label: 'Audit Logs', icon: ShieldCheck, badge: null },
 ];
@@ -255,17 +280,32 @@ export function Layout({ children }: { children: ReactNode }) {
             </span>
           </div>
 
-          {/* Center search shortcut pill */}
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="relative w-80 hidden md:flex items-center justify-between bg-surface/70 border border-border hover:border-primary/50 rounded-xl pl-9 pr-3 py-1.5 text-xs text-muted hover:text-white transition-all shadow-sm group text-left"
-          >
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-hover:text-primary transition-colors" size={14} />
-            <span>Search platform, nodes, metrics...</span>
-            <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-highlight text-muted border border-border group-hover:border-primary/40 group-hover:text-white transition-colors">
-              ⌘K
-            </kbd>
-          </button>
+          {/* Center Search shortcut & Organization Switcher */}
+          <div className="hidden md:flex items-center gap-3">
+            <Link
+              to="/organizations"
+              title="Switch Tenant or Environment"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface/80 hover:bg-surface border border-border hover:border-primary/40 text-xs font-mono transition-all group"
+            >
+              <Building2 size={13} className="text-primary-light group-hover:scale-105 transition-transform" />
+              <span className="text-white font-semibold tracking-tight">Acme Corp</span>
+              <ChevronRight size={11} className="text-muted/60" />
+              <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary-light font-bold text-[10px] border border-primary/30">
+                Production
+              </span>
+            </Link>
+
+            <button
+              onClick={() => setCommandPaletteOpen(true)}
+              className="relative w-64 flex items-center justify-between bg-surface/70 border border-border hover:border-primary/50 rounded-xl pl-9 pr-3 py-1.5 text-xs text-muted hover:text-white transition-all shadow-sm group text-left"
+            >
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted group-hover:text-primary transition-colors" size={14} />
+              <span>Search platform...</span>
+              <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-highlight text-muted border border-border group-hover:border-primary/40 group-hover:text-white transition-colors">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
 
           {/* Right Live indicators & actions */}
           <div className="flex items-center gap-3">

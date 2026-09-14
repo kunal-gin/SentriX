@@ -19,11 +19,22 @@ import (
 	"github.com/sentrix/server/internal/alerts"
 	"github.com/sentrix/server/internal/auth"
 	"github.com/sentrix/server/internal/automation"
+	"github.com/sentrix/server/internal/billing"
+	"github.com/sentrix/server/internal/capacity"
+	"github.com/sentrix/server/internal/compliance"
 	"github.com/sentrix/server/internal/containers"
 	"github.com/sentrix/server/internal/dashboards"
+	"github.com/sentrix/server/internal/databases"
+	"github.com/sentrix/server/internal/deployments"
+	"github.com/sentrix/server/internal/developer"
 	"github.com/sentrix/server/internal/integrations"
+	"github.com/sentrix/server/internal/intelligence"
 	"github.com/sentrix/server/internal/logs"
+	"github.com/sentrix/server/internal/network"
+	"github.com/sentrix/server/internal/organizations"
 	"github.com/sentrix/server/internal/realtime"
+	"github.com/sentrix/server/internal/scale"
+	"github.com/sentrix/server/internal/security"
 	"github.com/sentrix/server/internal/servicemap"
 	"github.com/sentrix/server/internal/services"
 	"github.com/sentrix/server/internal/slo"
@@ -1584,6 +1595,55 @@ func RegisterDemoRoutes(r chi.Router, bus *realtime.Bus, hub *realtime.Hub, tick
 		r.Post("/integrations/test", integrations.HandleTestIntegration(nil))
 		r.Get("/notifications/dlq", integrations.HandleListDLQ(nil))
 		r.Post("/notifications/dlq/{id}/replay", integrations.HandleReplayDLQ(nil))
+
+		// Phase 15: Enterprise Identity & Security Center
+		r.Get("/security/events", security.HandleListSecurityEvents(nil))
+		r.Get("/security/sessions", security.HandleListSessions(nil))
+		r.Post("/security/sessions/{id}/revoke", security.HandleRevokeSession(nil))
+		r.Get("/security/sso", security.HandleGetSSOConfig(nil))
+
+		// Phase 16: Multi-Tenancy & Organizations
+		r.Get("/organizations", organizations.HandleListOrganizations(nil))
+		r.Post("/organizations", organizations.HandleCreateOrganization(nil))
+		r.Get("/organizations/{id}/teams", organizations.HandleListTeams(nil))
+		r.Get("/organizations/{id}/quota", organizations.HandleGetTenantQuota(nil))
+
+		// Phase 18: Deployment & Change Intelligence
+		r.Get("/deployments", deployments.HandleListDeployments(nil))
+		r.Post("/deployments", deployments.HandleCreateDeployment(nil))
+		r.Get("/changes", deployments.HandleListChanges(nil))
+
+		// Phase 24: Developer Platform & Scoped API Keys
+		r.Get("/api-keys", developer.HandleListAPIKeys(nil))
+		r.Post("/api-keys", developer.HandleCreateAPIKey(nil))
+		r.Delete("/api-keys/{id}", developer.HandleRevokeAPIKey(nil))
+		r.Get("/openapi.json", developer.HandleGetOpenAPISpec(nil))
+
+		// Phase 17: High Availability & Scale Benchmarks
+		r.Get("/scale/benchmarks", scale.HandleListBenchmarks(nil))
+		r.Post("/scale/benchmark/run", scale.HandleRunBenchmark(nil))
+
+		// Phase 20: Capacity Planning & FinOps
+		r.Get("/capacity/forecasts", capacity.HandleListForecasts(nil))
+		r.Get("/capacity/finops", capacity.HandleGetFinOps(nil))
+
+		// Phase 21: Advanced Database & Network Diagnostics
+		r.Get("/databases/postgres", databases.HandleGetPostgresDiagnostics(nil))
+		r.Get("/network/diagnostics", network.HandleGetNetworkDiagnostics(nil))
+
+		// Phase 22: SaaS Control Plane, Plans & Usage Metering
+		r.Get("/billing/plans", billing.HandleListPlans(nil))
+		r.Get("/billing/usage", billing.HandleGetUsage(nil))
+		r.Post("/billing/subscribe", billing.HandleSubscribe(nil))
+
+		// Phase 23: Compliance, Disaster Recovery & SBOM
+		r.Get("/compliance/frameworks", compliance.HandleListFrameworks(nil))
+		r.Get("/compliance/dr", compliance.HandleGetDRPosture(nil))
+		r.Get("/compliance/sbom", compliance.HandleGetSBOM(nil))
+
+		// Phase 25: SentriX Intelligence 2.0 Multi-Signal Evidence Graph
+		r.Get("/intelligence/evidence-graph", intelligence.HandleGetEvidenceGraph(nil))
+		r.Post("/intelligence/correlate", intelligence.HandleCorrelate(nil))
 	})
 
 	// WebSocket handler

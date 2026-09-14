@@ -10,7 +10,12 @@ export interface SLOEntity {
   time_window: string;
   error_budget_minutes: number;
   consumed_minutes: number;
+  remaining_budget_percent?: number;
   burn_rate: number;
+  burn_rate_1h?: number;
+  burn_rate_6h?: number;
+  burn_alert_triggered?: boolean;
+  burn_alert_type?: string;
   status: 'HEALTHY' | 'AT_RISK' | 'BREACHED';
   sli_type: 'AVAILABILITY' | 'LATENCY' | 'ERROR_RATE';
   created_at: string;

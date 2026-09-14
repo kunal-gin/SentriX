@@ -20,17 +20,28 @@ import (
 	"github.com/sentrix/server/internal/api"
 	"github.com/sentrix/server/internal/auth"
 	"github.com/sentrix/server/internal/automation"
+	"github.com/sentrix/server/internal/billing"
+	"github.com/sentrix/server/internal/capacity"
 	"github.com/sentrix/server/internal/checks"
+	"github.com/sentrix/server/internal/compliance"
 	"github.com/sentrix/server/internal/containers"
 	"github.com/sentrix/server/internal/dashboards"
+	"github.com/sentrix/server/internal/databases"
 	"github.com/sentrix/server/internal/demo"
+	"github.com/sentrix/server/internal/deployments"
+	"github.com/sentrix/server/internal/developer"
 	"github.com/sentrix/server/internal/health"
 	"github.com/sentrix/server/internal/incidents"
 	"github.com/sentrix/server/internal/integrations"
+	"github.com/sentrix/server/internal/intelligence"
 	"github.com/sentrix/server/internal/logs"
 	"github.com/sentrix/server/internal/metrics"
+	"github.com/sentrix/server/internal/network"
 	"github.com/sentrix/server/internal/notifications"
+	"github.com/sentrix/server/internal/organizations"
 	"github.com/sentrix/server/internal/realtime"
+	"github.com/sentrix/server/internal/scale"
+	"github.com/sentrix/server/internal/security"
 	"github.com/sentrix/server/internal/selfmetrics"
 	"github.com/sentrix/server/internal/servers"
 	"github.com/sentrix/server/internal/servicemap"
@@ -242,6 +253,55 @@ func main() {
 				r.Post("/integrations/test", integrations.HandleTestIntegration(pool))
 				r.Get("/notifications/dlq", integrations.HandleListDLQ(pool))
 				r.Post("/notifications/dlq/{id}/replay", integrations.HandleReplayDLQ(pool))
+
+				// Phase 15: Enterprise Identity & Security Center
+				r.Get("/security/events", security.HandleListSecurityEvents(pool))
+				r.Get("/security/sessions", security.HandleListSessions(pool))
+				r.Post("/security/sessions/{id}/revoke", security.HandleRevokeSession(pool))
+				r.Get("/security/sso", security.HandleGetSSOConfig(pool))
+
+				// Phase 16: Multi-Tenancy & Organizations
+				r.Get("/organizations", organizations.HandleListOrganizations(pool))
+				r.Post("/organizations", organizations.HandleCreateOrganization(pool))
+				r.Get("/organizations/{id}/teams", organizations.HandleListTeams(pool))
+				r.Get("/organizations/{id}/quota", organizations.HandleGetTenantQuota(pool))
+
+				// Phase 18: Deployment & Change Intelligence
+				r.Get("/deployments", deployments.HandleListDeployments(pool))
+				r.Post("/deployments", deployments.HandleCreateDeployment(pool))
+				r.Get("/changes", deployments.HandleListChanges(pool))
+
+				// Phase 24: Developer Platform & Scoped API Keys
+				r.Get("/api-keys", developer.HandleListAPIKeys(pool))
+				r.Post("/api-keys", developer.HandleCreateAPIKey(pool))
+				r.Delete("/api-keys/{id}", developer.HandleRevokeAPIKey(pool))
+				r.Get("/openapi.json", developer.HandleGetOpenAPISpec(pool))
+
+				// Phase 17: High Availability & Scale Benchmarks
+				r.Get("/scale/benchmarks", scale.HandleListBenchmarks(pool))
+				r.Post("/scale/benchmark/run", scale.HandleRunBenchmark(pool))
+
+				// Phase 20: Capacity Planning & FinOps
+				r.Get("/capacity/forecasts", capacity.HandleListForecasts(pool))
+				r.Get("/capacity/finops", capacity.HandleGetFinOps(pool))
+
+				// Phase 21: Advanced Database & Network Diagnostics
+				r.Get("/databases/postgres", databases.HandleGetPostgresDiagnostics(pool))
+				r.Get("/network/diagnostics", network.HandleGetNetworkDiagnostics(pool))
+
+				// Phase 22: SaaS Control Plane, Plans & Usage Metering
+				r.Get("/billing/plans", billing.HandleListPlans(pool))
+				r.Get("/billing/usage", billing.HandleGetUsage(pool))
+				r.Post("/billing/subscribe", billing.HandleSubscribe(pool))
+
+				// Phase 23: Compliance, Disaster Recovery & SBOM
+				r.Get("/compliance/frameworks", compliance.HandleListFrameworks(pool))
+				r.Get("/compliance/dr", compliance.HandleGetDRPosture(pool))
+				r.Get("/compliance/sbom", compliance.HandleGetSBOM(pool))
+
+				// Phase 25: SentriX Intelligence 2.0 Multi-Signal Evidence Graph
+				r.Get("/intelligence/evidence-graph", intelligence.HandleGetEvidenceGraph(pool))
+				r.Post("/intelligence/correlate", intelligence.HandleCorrelate(pool))
 
 				// Checks management
 				r.Post("/checks", checks.HandleCreateCheck(pool))

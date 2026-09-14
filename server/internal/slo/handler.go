@@ -13,62 +13,82 @@ import (
 )
 
 type SLOEntity struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	Service        string    `json:"service"`
-	Target         float64   `json:"target_percent"`       // e.g. 99.95
-	Current        float64   `json:"current_percent"`      // e.g. 99.98
-	TimeWindow     string    `json:"time_window"`          // 30d, 7d
-	ErrorBudgetMin float64   `json:"error_budget_minutes"` // allowed downtime minutes
-	ConsumedMin    float64   `json:"consumed_minutes"`     // actual consumed downtime
-	BurnRate       float64   `json:"burn_rate"`            // 1.0x is nominal budget burn
-	Status         string    `json:"status"`               // HEALTHY, AT_RISK, BREACHED
-	SLIType        string    `json:"sli_type"`             // AVAILABILITY, LATENCY, ERROR_RATE
-	CreatedAt      time.Time `json:"created_at"`
+	ID                     string    `json:"id"`
+	Name                   string    `json:"name"`
+	Service                string    `json:"service"`
+	Target                 float64   `json:"target_percent"`         // e.g. 99.95
+	Current                float64   `json:"current_percent"`        // e.g. 99.98
+	TimeWindow             string    `json:"time_window"`            // 30d, 7d
+	ErrorBudgetMin         float64   `json:"error_budget_minutes"`   // allowed downtime minutes
+	ConsumedMin            float64   `json:"consumed_minutes"`       // actual consumed downtime
+	RemainingBudgetPercent float64   `json:"remaining_budget_percent"` // 0-100%
+	BurnRate               float64   `json:"burn_rate"`              // 1.0x nominal
+	BurnRate1h             float64   `json:"burn_rate_1h"`           // 1h window (14.4x fast burn trigger)
+	BurnRate6h             float64   `json:"burn_rate_6h"`           // 6h window (6.0x slow burn trigger)
+	Status                 string    `json:"status"`                 // HEALTHY, AT_RISK, BREACHED
+	BurnAlertTriggered     bool      `json:"burn_alert_triggered"`
+	BurnAlertType          string    `json:"burn_alert_type"`        // NONE, FAST_BURN_14X, SLOW_BURN_6X
+	SLIType                string    `json:"sli_type"`               // AVAILABILITY, LATENCY, ERROR_RATE
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 var defaultSLOs = []SLOEntity{
 	{
-		ID:             "slo-001",
-		Name:           "Checkout Ingestion API 99.95% Availability",
-		Service:        "payments-service",
-		Target:         99.95,
-		Current:        99.97,
-		TimeWindow:     "30d",
-		ErrorBudgetMin: 21.6,
-		ConsumedMin:    7.2,
-		BurnRate:       1.15,
-		Status:         "HEALTHY",
-		SLIType:        "AVAILABILITY",
-		CreatedAt:      time.Now().Add(-720 * time.Hour),
+		ID:                     "slo-001",
+		Name:                   "Checkout Ingestion API 99.95% Availability",
+		Service:                "payments-service",
+		Target:                 99.95,
+		Current:                99.97,
+		TimeWindow:             "30d",
+		ErrorBudgetMin:         21.6,
+		ConsumedMin:            7.2,
+		RemainingBudgetPercent: 66.7,
+		BurnRate:               1.15,
+		BurnRate1h:             0.95,
+		BurnRate6h:             1.10,
+		Status:                 "HEALTHY",
+		BurnAlertTriggered:     false,
+		BurnAlertType:          "NONE",
+		SLIType:                "AVAILABILITY",
+		CreatedAt:              time.Now().Add(-720 * time.Hour),
 	},
 	{
-		ID:             "slo-002",
-		Name:           "OIDC Authentication Token P95 Latency < 100ms",
-		Service:        "auth-gateway",
-		Target:         99.90,
-		Current:        99.94,
-		TimeWindow:     "30d",
-		ErrorBudgetMin: 43.2,
-		ConsumedMin:    12.4,
-		BurnRate:       0.85,
-		Status:         "HEALTHY",
-		SLIType:        "LATENCY",
-		CreatedAt:      time.Now().Add(-720 * time.Hour),
+		ID:                     "slo-002",
+		Name:                   "OIDC Authentication Token P95 Latency < 100ms",
+		Service:                "auth-gateway",
+		Target:                 99.90,
+		Current:                99.94,
+		TimeWindow:             "30d",
+		ErrorBudgetMin:         43.2,
+		ConsumedMin:            12.4,
+		RemainingBudgetPercent: 71.3,
+		BurnRate:               0.85,
+		BurnRate1h:             0.80,
+		BurnRate6h:             0.88,
+		Status:                 "HEALTHY",
+		BurnAlertTriggered:     false,
+		BurnAlertType:          "NONE",
+		SLIType:                "LATENCY",
+		CreatedAt:              time.Now().Add(-720 * time.Hour),
 	},
 	{
-		ID:             "slo-003",
-		Name:           "Telemetry Batch Ingestion Pipeline Availability",
-		Service:        "telemetry-engine",
-		Target:         99.99,
-		Current:        99.92,
-		TimeWindow:     "30d",
-		ErrorBudgetMin: 4.32,
-		ConsumedMin:    3.80,
-		BurnRate:       2.45,
-		Status:         "AT_RISK",
-		SLIType:        "AVAILABILITY",
-		CreatedAt:      time.Now().Add(-720 * time.Hour),
+		ID:                     "slo-003",
+		Name:                   "Telemetry Batch Ingestion Pipeline Availability",
+		Service:                "telemetry-engine",
+		Target:                 99.99,
+		Current:                99.92,
+		TimeWindow:             "30d",
+		ErrorBudgetMin:         4.32,
+		ConsumedMin:            3.80,
+		RemainingBudgetPercent: 12.0,
+		BurnRate:               2.45,
+		BurnRate1h:             14.8,
+		BurnRate6h:             6.2,
+		Status:                 "AT_RISK",
+		BurnAlertTriggered:     true,
+		BurnAlertType:          "FAST_BURN_14X",
+		SLIType:                "AVAILABILITY",
+		CreatedAt:              time.Now().Add(-720 * time.Hour),
 	},
 }
 
@@ -116,6 +136,18 @@ func HandleCreateSLO(pool *pgxpool.Pool) http.HandlerFunc {
 		}
 		if req.BurnRate <= 0 {
 			req.BurnRate = 1.0
+		}
+		if req.BurnRate1h <= 0 {
+			req.BurnRate1h = 1.0
+		}
+		if req.BurnRate6h <= 0 {
+			req.BurnRate6h = 1.0
+		}
+		if req.RemainingBudgetPercent <= 0 {
+			req.RemainingBudgetPercent = 100.0
+		}
+		if req.BurnAlertType == "" {
+			req.BurnAlertType = "NONE"
 		}
 
 		defaultSLOs = append([]SLOEntity{req}, defaultSLOs...)

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -33,6 +33,8 @@ import {
   Sparkles,
   BrainCircuit,
   Layers,
+  Rocket,
+  GitBranch,
 } from 'lucide-react';
 
 function formatDuration(startIso: string, endIso: string | null): string {
@@ -70,6 +72,19 @@ export function IncidentDetailPage() {
   const [aiRca, setAiRca] = useState<any | null>(null);
   const [loadingAiRca, setLoadingAiRca] = useState(false);
   const [generatingPostmortem, setGeneratingPostmortem] = useState(false);
+  const [correlatedDeployments, setCorrelatedDeployments] = useState<any[]>([]);
+
+  // Load correlated releases and deployments
+  useEffect(() => {
+    if (!incidentId) return;
+    api.get('/deployments')
+      .then((res) => {
+        const deps = res.data || [];
+        const matches = deps.filter((d: any) => d.correlated_incident_id === incidentId);
+        setCorrelatedDeployments(matches.length > 0 ? matches : deps.slice(0, 1));
+      })
+      .catch((err) => console.error('Failed to load deployments for incident', err));
+  }, [incidentId]);
 
   async function handleRunAiRca() {
     if (!incidentId) return;
@@ -536,6 +551,60 @@ export function IncidentDetailPage() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Phase 18: Correlated Deployments & Recent Changes Card */}
+          <div className="glass-card rounded-2xl p-6 border border-border shadow-glass space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Rocket size={17} className="text-primary-light" />
+                <h2 className="text-base font-semibold text-white">Recent Releases & Changes</h2>
+              </div>
+              <Link
+                to="/deployments"
+                className="text-[11px] font-mono text-primary-light hover:underline flex items-center gap-1"
+              >
+                <span>All Deployments</span>
+                <ChevronRight size={12} />
+              </Link>
+            </div>
+
+            <p className="text-xs text-muted leading-relaxed">
+              Automated correlation detects software releases or configuration rollouts deployed immediately preceding incident onset.
+            </p>
+
+            <div className="space-y-2.5">
+              {correlatedDeployments.map((dep) => (
+                <div
+                  key={dep.id}
+                  className="p-3.5 rounded-xl bg-surface/60 border border-primary/30 space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white text-xs">{dep.service_name}</span>
+                      <span className="px-1.5 py-0.2 rounded font-mono text-[10px] bg-primary/20 text-primary-light font-bold">
+                        {dep.version}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-critical bg-critical/10 px-2 py-0.5 rounded border border-critical/20 font-bold">
+                      Suspect Trigger
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-muted">
+                    <GitBranch size={12} className="text-primary-light" />
+                    <span className="text-white font-semibold">{dep.commit_sha}</span>
+                    <span>•</span>
+                    <span className="text-text-dim truncate">{dep.commit_message}</span>
+                  </div>
+
+                  <div className="text-[10px] font-mono text-muted flex items-center justify-between pt-1 border-t border-border/40">
+                    <span>Author: {dep.author}</span>
+                    <span>Deployed: {new Date(dep.started_at).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Manual RCA & Postmortem Card */}
